@@ -1,0 +1,380 @@
+/* ===================================================================
+   PeerFund Dashboard — Matte Tortoise (light) + Purple accents
+   Works with your current Dashboard.jsx class names.
+   Also aliases .db-shell → .db-container for safety.
+   =================================================================== */
+
+:root {
+  /* Light palette (kept in sync with tokens.css) */
+  --pf-bg:        #EDE6D9;
+  --pf-surface:   #FBF8F1;
+  --pf-surface-2: #F5EFE4;              /* subtle section contrast */
+  --pf-ring:      #E5DCC8;              /* borders/dividers */
+  --pf-shadow:    0 12px 28px rgba(38, 28, 13, .12);
+
+  --pf-text:      #1F2937;              /* main ink */
+  --pf-sub:       #4B5563;              /* secondary */
+  --pf-muted:     #6B7280;              /* tertiary */
+
+  --pf-brand:     #6B5BFF;              /* purple */
+  --pf-brand-600: #5C4BFF;
+  --pf-brand-700: #4E3CF0;
+  --pf-brand-ink: #FFFFFF;
+  --pf-brand-soft:#EEEAFD;
+
+  --pf-radius: 14px;
+}
+
+/* --- Page shell --- */
+.db-container,
+.db-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 16px 28px;
+  color: var(--pf-text);
+}
+.center { display: grid; place-items: center; min-height: 60vh; }
+.db-loader { opacity: .85; }
+
+/* --- Header / hero band --- */
+.db-header { margin-bottom: 14px; }
+.db-title {
+  margin: 0 0 4px;
+  font-size: clamp(26px, 2.8vw, 32px);
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: var(--pf-text);
+}
+
+/* ---------- Superuser notification bar (slim + solid) ---------- */
+.db-cta{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 8px 12px;                 /* tighter height */
+  border: 1px solid var(--pf-ring);
+  border-radius: 10px;
+
+  background: var(--pf-surface);     /* solid matte surface */
+  box-shadow: 0 4px 12px rgba(38,28,13,.06);
+  margin-bottom: 14px;
+}
+
+/* Left content in a single line */
+.db-cta-text{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;                      /* allow text ellipsis if container gets tight */
+}
+.db-cta-text h3{
+  margin: 0;
+  font-size: 14px;                   /* more “banner” sized */
+  font-weight: 700;
+  color: var(--pf-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Hide the old paragraph line in slim mode */
+.db-cta-text p{ display: none; }
+
+/* Small pill (clickable) */
+.db-cta .chip{
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--pf-ring);
+  color: var(--pf-text);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .02em;
+  margin: 0;                         /* no extra vertical space */
+  cursor: pointer;
+}
+
+/* Right-side button, compact */
+.db-cta .action-btn{
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  background: var(--pf-brand);
+  border: 1px solid var(--pf-brand);
+  color: var(--pf-brand-ink);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background .15s ease, box-shadow .15s ease, transform .06s ease;
+}
+.db-cta .action-btn:hover{
+  background: var(--pf-brand-600);
+  box-shadow: 0 6px 14px rgba(38,28,13,.10);
+}
+.db-cta .action-btn:active{ transform: translateY(1px); }
+
+/* On small screens, allow the button to wrap under while staying slim */
+@media (max-width: 720px){
+  .db-cta{ flex-wrap: wrap; row-gap: 8px; }
+  .db-cta .action-btn{ margin-left: auto; }
+}
+
+/* Utility chip (if used elsewhere) */
+.chip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+  border-radius: 999px; border: 1px solid var(--pf-ring);
+  background: #fff; color: var(--pf-muted); font-size: 12px; margin-bottom: 6px;
+}
+
+/* --- Two-column grid --- */
+.db-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 980px) {
+  .db-grid { grid-template-columns: 1fr; }
+}
+
+/* --- Generic card/panel --- */
+.db-card,
+.card-panel,
+.side-card {
+  background: var(--pf-surface);
+  border: 1px solid var(--pf-ring);
+  border-radius: var(--pf-radius);
+  box-shadow: var(--pf-shadow);
+  padding: 12px;
+}
+
+.db-card-title,
+.panel-head h3,
+.db-tip h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  color: var(--pf-text);
+}
+
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+
+/* --- Composer (new post input) --- */
+.db-composer,
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.db-composer input,
+.composer input {
+  height: 40px;
+  border-radius: 12px;
+  padding: 0 12px;
+  background: #fff;
+  color: var(--pf-text);
+  border: 1px solid var(--pf-ring);
+  outline: none;
+}
+.db-composer input::placeholder,
+.composer input::placeholder { color: var(--pf-muted); }
+
+/* --- Feed --- */
+.db-subtitle,
+.section-label { margin: 6px 0 8px; font-size: 14px; font-weight: 800; color: var(--pf-sub); }
+
+.db-feed,
+.feed { display: grid; gap: 10px; }
+
+.db-feed-item,
+.feed-item {
+  border: 1px solid var(--pf-ring);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.db-feed-top,
+.feed-top {
+  display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px;
+}
+
+.db-feed-author,
+.link {
+  appearance: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--pf-brand-700); font-weight: 800;
+}
+.db-feed-author:hover,
+.link:hover { text-decoration: underline; }
+
+.db-feed-time,
+.time { font-size: 12px; color: var(--pf-muted); }
+
+.db-feed-content,
+.content { margin: 0; color: var(--pf-text); line-height: 1.55; }
+
+.db-empty,
+.empty {
+  border: 1px dashed var(--pf-ring);
+  border-radius: 12px; padding: 12px; color: var(--pf-muted); font-style: italic;
+}
+
+/* --- Right column tip / leaderboard wrappers --- */
+.leaderboard-wrap { border: 1px solid var(--pf-ring); border-radius: 12px; padding: 10px 12px; background: #fff; }
+.db-side .leaderboard-wrap { margin-bottom: 12px; }
+
+.db-tip {
+  margin-top: 12px;
+  background: var(--pf-surface-2);
+  border: 1px solid var(--pf-ring);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.db-bullets,
+.bullets { list-style: disc; padding-left: 18px; margin: 8px 0 0; color: var(--pf-text); }
+.db-bullets li,
+.bullets li { margin: 6px 0; }
+.db-bullet-row,
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* --- Buttons --- */
+.action-btn,
+.btn,
+.btn-primary {
+  font-weight: 800;
+  padding: 9px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform .08s ease,
+    background .15s ease,
+    border-color .15s ease,
+    box-shadow .15s ease;
+}
+
+.action-btn,
+.btn {
+  background: #fff;
+  border: 1px solid var(--pf-ring);
+  color: var(--pf-text);
+}
+.action-btn:hover,
+.btn:hover {
+  background: #F8F5EE;
+  border-color: #E0D6BF;
+  box-shadow: 0 8px 18px rgba(38,28,13,.10);
+}
+.action-btn:active,
+.btn:active { transform: translateY(1px); }
+.action-btn:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 3px rgba(107,91,255,.35);
+}
+
+.action-btn.primary,
+.btn-primary {
+  background: var(--pf-brand);
+  border-color: var(--pf-brand);
+  color: var(--pf-brand-ink);
+}
+.action-btn.primary:hover,
+.btn-primary:hover { background: var(--pf-brand-600); }
+
+.muted { color: var(--pf-muted); }
+
+/* Clickable chip */
+.chip--clickable {
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .06s ease;
+}
+.chip--clickable:hover {
+  background: #FFFFFF;
+  box-shadow: 0 6px 16px rgba(38,28,13,.10);
+  border-color: #E0D6BF;
+}
+.chip--clickable:active { transform: translateY(1px); }
+
+/* Superuser popover — anchor on LEFT of the bar */
+.sup-popover {
+  position: absolute;
+  left: 16px;                 /* ⟵ was right: 16px */
+  right: auto;
+  top: calc(100% + 10px);
+  width: min(360px, calc(100vw - 32px));
+  background: #FFFFFF;
+  border: 1px solid var(--pf-ring);
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(38,28,13,.16);
+  padding: 12px;
+  z-index: 40;
+}
+
+/* little arrow now aligned to the left */
+.sup-popover::before {
+  content: "";
+  position: absolute;
+  left: 34px;                 /* ⟵ was right: 40px */
+  right: auto;
+  top: -8px;
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border-left: 1px solid var(--pf-ring);
+  border-top: 1px solid var(--pf-ring);
+  transform: rotate(45deg);
+}
+
+/* mobile: keep full-width behavior, arrow starts near left */
+@media (max-width: 720px) {
+  .sup-popover {
+    left: 12px;               /* keep a little gutter */
+    right: 12px;              /* allow stretch if needed */
+    width: auto;
+  }
+  .sup-popover::before { left: 26px; right: auto; }
+}
+
+.sup-popover__head { margin-bottom: 6px; }
+.sup-popover__title {
+  font-weight: 800;
+  color: var(--pf-text);
+  letter-spacing: .2px;
+}
+
+.sup-popover__list {
+  margin: 8px 0 10px;
+  padding-left: 18px;
+  color: var(--pf-text);
+}
+.sup-popover__list li { margin: 6px 0; }
+
+.sup-popover__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* lightweight overlay so outside-click is easy (click-through appearance) */
+.sup-popover__overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 30;
+}
+
+/* mobile: anchor under CTA, full width feel if space is tight */
+@media (max-width: 720px) {
+  .sup-popover {
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+  .sup-popover::before { right: 26px; }
+}

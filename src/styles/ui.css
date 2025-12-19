@@ -1,0 +1,76 @@
+.container{
+  width: min(1100px, 92vw);
+  margin: 24px auto 64px;
+}
+
+.h1{
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 800;
+  letter-spacing: .2px;
+  margin: 0 0 16px;
+}
+
+.subtle{
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.row{ display:flex; align-items:center; gap:12px }
+.col{ display:flex; flex-direction:column; gap:10px }
+
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0)) , var(--panel);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+.card--p16{ padding:16px }
+.card--p20{ padding:20px }
+.card--glass{ backdrop-filter: saturate(135%) blur(6px) }
+
+.input{
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+.input:focus{
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+.btn{
+  appearance:none; border:1px solid transparent; border-radius: 12px;
+  padding: 10px 14px; font-weight: 700; cursor:pointer;
+  color:#0b1020; background:#fff; transition: transform .02s ease, filter .2s ease;
+}
+.btn:active{ transform: translateY(1px) }
+
+.btn--brand{ background: linear-gradient(180deg,var(--brand),var(--brand-700)); color:#fff; border-color: var(--brand-700) }
+.btn--ghost{ background: transparent; color: var(--text); border-color: rgba(255,255,255,0.12) }
+.btn--ok{ background: linear-gradient(180deg,var(--ok),#16a34a); color:#05151a; border-color:#16a34a }
+.btn--danger{ background: linear-gradient(180deg,var(--danger),#dc2626); color:#1a0909; border-color:#dc2626 }
+
+.btn[disabled]{ opacity:.6; cursor:not-allowed; filter: grayscale(.2) }
+
+.badges{ display:flex; gap:8px; align-items:center }
+.badge{
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+  border: 1px solid rgba(255,255,255,0.16);
+}
+.badge--muted{ background: rgba(148,163,184,.15); color: var(--muted) }
+.badge--ok{ background: rgba(52,211,153,.15); color: var(--ok); border-color: rgba(52,211,153,.35) }
+.badge--brand{ background: rgba(110,168,254,.15); color: var(--brand); border-color: rgba(110,168,254,.35) }
+
+.section{
+  display:flex; flex-direction:column; gap:12px; margin: 18px 0 22px;
+}
+
+.kicker{
+  text-transform: uppercase; letter-spacing: .12em;
+  color: var(--muted); font-weight: 800; font-size: 12px;
+}
+
+.hr{ height:1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent); border:0; }

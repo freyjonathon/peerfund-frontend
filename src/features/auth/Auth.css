@@ -1,0 +1,187 @@
+/* ============================================================
+   PeerFund Auth (Login & Signup)
+   Updated for light matte tortoise + purple aesthetic
+   ============================================================ */
+
+:root {
+  --pf-bg: var(--bg, #EDE6D9);         /* matte tortoise background */
+  --pf-card: rgba(255,255,255,0.94);   /* glassy light card */
+  --pf-line: rgba(0,0,0,0.08);         /* subtle border */
+  --pf-text: var(--text, #1F2937);     /* dark ink */
+  --pf-subtext: var(--subtext, #4B5563);
+  --pf-brand: var(--brand, #6B5BFF);   /* main purple */
+  --pf-brand-soft: var(--brand-soft, #EEEAFD);
+  --pf-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Full-page wrapper */
+.auth-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background:
+    radial-gradient(1100px 640px at 26% -8%,
+      rgba(107,91,255,.06) 0%,      /* soft purple glow */
+      rgba(107,91,255,.03) 40%,
+      transparent 70%),
+    var(--pf-bg);
+}
+
+/* Card container */
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--pf-card);
+  border: 1px solid var(--pf-line);
+  border-radius: 14px;
+  box-shadow: var(--pf-shadow);
+  padding: 24px;
+}
+
+/* Header section (logo + title) */
+.auth-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.auth-logo {
+  height: 34px;
+  width: 34px;
+  border-radius: 8px;
+  background: var(--pf-brand-soft);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+}
+
+.auth-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--pf-text);
+}
+
+/* Subtitle / intro */
+.auth-sub {
+  color: var(--pf-subtext);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* Form fields */
+.auth-field {
+  margin-top: 12px;
+}
+
+.auth-label {
+  display: block;
+  font-size: 12px;
+  color: var(--pf-subtext);
+  margin-bottom: 6px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--pf-line);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--pf-text);
+  background: #FBF8F1; /* Light cream surface */
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.auth-input:hover {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--pf-line), var(--pf-brand) 20%);
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--pf-brand);
+  box-shadow: 0 0 0 3px rgba(107,91,255,0.25);
+}
+
+/* Buttons section */
+.auth-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.auth-btn {
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s;
+  border: 1px solid transparent;
+}
+
+.auth-btn.primary {
+  background: var(--pf-brand);
+  border-color: var(--pf-brand);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(107,91,255,0.25);
+}
+
+.auth-btn.primary:hover {
+  filter: brightness(0.95);
+}
+
+.auth-btn.ghost {
+  background: var(--pf-brand-soft);
+  border-color: rgba(107,91,255,0.35);
+  color: var(--pf-brand);
+}
+
+.auth-btn.ghost:hover {
+  filter: brightness(0.97);
+}
+
+/* Error box */
+.auth-error {
+  margin-top: 12px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #991b1b;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+/* Footer (links, back to home, etc.) */
+.auth-footer {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--pf-subtext);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auth-link {
+  color: var(--pf-brand);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(107,91,255,0.4);
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.auth-link:hover {
+  border-bottom-color: rgba(107,91,255,0.7);
+}
+
+.auth-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(107,91,255,0.25);
+}

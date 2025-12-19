@@ -1,0 +1,163 @@
+/* src/components/OfferModal.css */
+
+.ofm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(1px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  z-index: 9999;
+}
+
+.ofm-modal {
+  width: 100%;
+  max-width: 920px;            /* ⬅️ wider so content isn't cramped */
+  background: #fff;
+  border-radius: 14px;
+  box-shadow:
+    0 10px 15px -3px rgba(0,0,0,.1),
+    0 4px 6px -2px rgba(0,0,0,.05);
+  overflow: hidden;
+}
+
+.ofm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.ofm-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ofm-close {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: #0f172a;
+}
+.ofm-close:hover { background: #f1f5f9; }
+
+.ofm-body {
+  padding: 14px 16px 16px 16px;
+  max-height: 72vh;            /* slightly taller scroll area */
+  overflow-y: auto;
+}
+
+/* Snapshot grid */
+.ofm-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ofm-stat {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.ofm-stat-label { font-size: 12px; color: #64748b; }
+.ofm-stat-value { font-weight: 800; color: #0f172a; }
+
+/* Offer list */
+.ofm-offer-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+/* ⬇️ allow wrapping so the accept button can sit on the right cleanly */
+.ofm-offer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;              /* ⬅️ allow wrapping */
+}
+
+.ofm-offer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ofm-offer-badge {
+  border: 1px solid #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ofm-offer-body {
+  padding: 10px 12px 12px 12px;
+}
+
+/* Submit form */
+.ofm-offer-form {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px;
+}
+.ofm-offer-form label {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.ofm-offer-form input, .ofm-offer-form textarea {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  color: #0f172a;
+}
+
+/* Section heading */
+.ofm-section-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Accept button style when placed in header */
+.ofm-accept-btn {
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid #4f46e5;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ofm-accept-btn:hover { filter: brightness(1.05); }
+
+/* Generic error */
+.pf-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 8px;
+}

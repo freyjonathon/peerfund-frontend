@@ -1,0 +1,172 @@
+/* Backdrop (use RGBA, not opacity) */
+.pfm-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.55); /* slate-950 @ 55% */
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 1000;
+}
+
+/* Modal shell */
+.pfm-modal {
+  width: min(880px, calc(100vw - 40px));
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 40px 80px rgba(2, 6, 23, 0.35),
+    0 12px 24px rgba(2, 6, 23, 0.18);
+}
+
+/* Enter animation */
+.pfm-animate-in {
+  animation: pfmModalIn .18s ease-out both;
+}
+@keyframes pfmModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Body */
+.pfm-body {
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* Close */
+.pfm-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: #334155;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pfm-close:hover { color: #0f172a; }
+
+/* Header area */
+.pfm-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.pfm-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #3730a3;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.pfm-header-meta { min-width: 0; }
+.pfm-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pfm-badge {
+  font-size: 12px;
+  background: #ecfeff;
+  color: #155e75;
+  border: 1px solid #a5f3fc;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.pfm-sub {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12px;
+}
+.pfm-last-active {
+  margin-top: 2px;
+  color: #475569;
+  font-size: 12px;
+}
+
+/* Section title + text */
+.pfm-section-title {
+  margin: 8px 0 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.pfm-summary {
+  margin: 0 0 8px;
+  color: #334155;
+  line-height: 1.55;
+}
+
+/* Stats grid */
+.pfm-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .pfm-stats { grid-template-columns: 1fr; }
+}
+
+.pfm-stat {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.pfm-stat-label {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.pfm-stat-value {
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1.1;
+}
+.pfm-stat-sub {
+  color: #475569;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* Helpers / feedback */
+.pfm-center { display: grid; place-items: center; min-height: 140px; }
+.pfm-error  { color: #b91c1c; }
+
+.pfm-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: pfmspin .9s linear infinite;
+}
+@keyframes pfmspin { to { transform: rotate(360deg); } }

@@ -1,0 +1,204 @@
+/* Layout shell */
+.cl-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+}
+
+/* Header */
+.cl-header {
+  margin-bottom: 20px;
+}
+
+.cl-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--subtext);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.cl-title {
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.cl-subtitle {
+  margin: 0;
+  color: var(--subtext);
+  font-size: 14px;
+}
+
+/* Alerts (fee banner) */
+.cl-alert,
+.cl-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin: 18px 0;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+
+.cl-alert-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.cl-alert-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.cl-alert-text {
+  color: var(--subtext);
+  font-size: 13px;
+}
+
+/* Variants */
+.cl-alert--warn {
+  background: #FEF3C7;
+  border-color: #FBBF24;
+}
+
+.cl-alert--success {
+  background: #ECFDF3;
+  border-color: #4ADE80;
+}
+
+/* Card */
+.cl-card {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 20px 20px 18px;
+  border: 1px solid var(--ring);
+  box-shadow: var(--shadow);
+}
+
+.cl-card--loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--subtext);
+}
+
+/* Grid: top three fields */
+.cl-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .cl-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Field */
+.cl-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.cl-field--full {
+  margin-top: 8px;
+}
+
+/* Labels */
+.cl-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.cl-label-row label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cl-label-meta {
+  font-size: 12px;
+  color: var(--subtext);
+}
+
+.cl-label-meta.optional::before {
+  content: '• ';
+}
+
+/* Inputs */
+.cl-field input,
+.cl-field textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--ring);
+  padding: 9px 11px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #F9FAFB;
+  color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease,
+              background .15s ease;
+}
+
+.cl-field input::placeholder,
+.cl-field textarea::placeholder {
+  color: #9CA3AF;
+}
+
+.cl-field textarea {
+  resize: vertical;
+  min-height: 104px;
+}
+
+.cl-field input:focus,
+.cl-field textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, .2),
+              0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+/* Hint text */
+.cl-hint {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--subtext);
+}
+
+/* Divider between fields and actions */
+.cl-divider {
+  margin: 10px 0 14px;
+  border-top: 1px dashed #E5E7EB;
+}
+
+/* Actions */
+.cl-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* On narrow screens, stack buttons */
+@media (max-width: 640px) {
+  .cl-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .cl-actions .btn,
+  .cl-actions .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,162 @@
+/* ================= Sidebar (Matte Tortoise + Purple) ================= */
+/* Uses tokens from tokens.css for palette consistency */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+/* Map local aliases (optional; helps readability) */
+:root{
+  --sb-surface: var(--surface);
+  --sb-border:  var(--ring);
+  --sb-text:    var(--text);
+  --sb-muted:   var(--subtext);
+  --sb-brand:   var(--brand);
+  --sb-brand-600: var(--brand-600);
+  --sb-brand-700: var(--brand-700);
+  --sb-brand-soft: var(--brand-soft);
+
+  --sb-radius: 12px;
+}
+
+/* ================= Desktop baseline ================= */
+.sidebar{
+  position: sticky;
+  top: 56px;                   /* match navbar height */
+  align-self: start;
+  width: 240px;
+  min-height: calc(100vh - 56px);
+  padding: 16px 12px;
+
+  /* Matte surface (no glass, no heavy shadow) */
+  background: var(--sb-surface);
+  border-right: 1px solid var(--sb-border);
+  color: var(--sb-text);
+  box-shadow: none;
+  backdrop-filter: none;
+
+  /* IMPORTANT: keep above the backdrop so clicks go to buttons */
+  z-index: 1001;
+}
+
+/* Brand/title chip */
+.sidebar__brand{
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  margin: 6px 4px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: .2px;
+
+  background: #fff;
+  border: 1px solid var(--sb-border);
+  color: var(--sb-text);
+}
+
+/* Nav list */
+.sidebar__nav{
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Buttons → light pill cards */
+.sidebar__btn{
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--sb-radius);
+  border: 1px solid var(--sb-border);
+  background: #fff;                 /* crisp on tortoise bg */
+  color: var(--sb-text);
+  font: inherit;
+  font-weight: 600;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease,
+    transform .06s ease;
+}
+
+.sidebar__btn:hover{
+  background: var(--sb-brand-soft);
+  border-color: var(--sb-brand-600);
+  box-shadow: 0 8px 18px rgba(38,28,13,.08);
+}
+
+.sidebar__btn:active{ transform: translateY(1px); }
+
+.sidebar__btn:focus-visible{
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(107,91,255,.28);
+  border-color: var(--sb-brand);
+}
+
+/* Active state */
+.sidebar__btn.is-active{
+  background: var(--sb-brand-soft);
+  border-color: var(--sb-brand);
+  color: var(--sb-brand-700);
+  font-weight: 800;
+}
+
+/* ================= Backdrop for mobile drawer ================= */
+.sidebar__backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+
+  /* sits below the sidebar but above page content */
+  z-index: 1000;
+}
+
+/* ================= Mobile drawer behavior ================= */
+@media (max-width: 1024px){
+  .sidebar{
+    position: fixed;
+    top: 56px;                  /* below navbar */
+    left: 0;
+    width: 300px;
+    min-height: calc(100dvh - 56px);
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+
+    /* keep it matte but add a *subtle* elevation */
+    background: var(--sb-surface);
+    border-right: 1px solid var(--sb-border);
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    box-shadow: 0 20px 40px rgba(38,28,13,.12);
+
+    /* ensure it remains click-through above the backdrop */
+    z-index: 1001;
+  }
+
+  /* When body attribute is "open", show drawer + backdrop */
+  body[data-sidebar="open"] .sidebar{
+    transform: translateX(0);
+  }
+  body[data-sidebar="open"] .sidebar__backdrop{
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Slightly tighter layout on very small screens */
+@media (max-width: 420px){
+  .sidebar{ width: 92vw; }
+  .sidebar__btn{ height: 40px; }
+}

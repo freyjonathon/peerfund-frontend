@@ -1,0 +1,43 @@
+:root {
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+               'Segoe UI', sans-serif;
+
+  /* Neutrals */
+  --bg: #F7F8FA;          /* page background */
+  --surface: #FFFFFF;     /* cards / sidebar */
+  --text: #111827;        /* main text (slate-900) */
+  --subtext: #6B7280;     /* muted text (slate-500) */
+  --ring: #E5E7EB;        /* borders (gray-200) */
+
+  /* Brand (indigo-ish fintech look) */
+  --brand: #4F46E5;       /* primary / buttons */
+  --brand-600: #4338CA;
+  --brand-700: #3730A3;
+  --brand-soft: #EEF2FF;  /* soft background for selected / subtle */
+  --brand-ink: #F9FAFB;   /* text on brand buttons */
+
+  /* Shadows */
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.10);
+}
+
+
+/* Global background + base text */
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Helpful defaults */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Links pick up brand */
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }

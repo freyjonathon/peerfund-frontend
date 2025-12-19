@@ -1,0 +1,240 @@
+/* ============================================================
+   UserProfileCard — Glassy Dark Theme (matches Dashboard/Home)
+   Drop-in replacement; no JSX changes required
+   ============================================================ */
+
+:root{
+  --pf-text: #e6edf7;
+  --pf-sub: rgba(230,237,247,.78);
+  --pf-muted: rgba(230,237,247,.60);
+  --pf-border: rgba(255,255,255,.12);
+  --pf-border-strong: rgba(255,255,255,.20);
+  --pf-primary: #4f46e5;
+  --pf-primary-soft: rgba(79,70,229,.16);
+  --pf-card: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
+  --pf-shadow: 0 20px 70px rgba(0,0,0,.45);
+  --pf-radius: 14px;
+}
+
+/* Card */
+.user-card {
+  color: var(--pf-text);
+  background: var(--pf-card);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  padding: 16px;
+  box-shadow: var(--pf-shadow);
+  backdrop-filter: saturate(130%) blur(10px);
+}
+
+/* Header */
+.user-card__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.user-card__avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(120% 120% at 20% 0%, rgba(79,70,229,.35), rgba(79,70,229,.12));
+  display: grid; place-items: center;
+  font-weight: 800;
+  color: #fff;
+  border: 1px solid var(--pf-border);
+}
+.user-card__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: var(--pf-text);
+}
+.user-card__badge {
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pf-border);
+  background: rgba(255,255,255,.06);
+  color: var(--pf-sub);
+}
+.user-card__sub { color: var(--pf-muted); font-size: 12px; }
+
+/* Sections */
+.user-card__section { margin-top: 14px; }
+.user-card__section-title {
+  font-weight: 800; font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--pf-sub);
+  letter-spacing: .2px;
+}
+
+/* Term tiles */
+.user-card__terms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.user-card__term {
+  border: 1px solid var(--pf-border);
+  background: rgba(255,255,255,.04);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: transform .06s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.user-card__term:hover {
+  background: rgba(255,255,255,.08);
+  border-color: var(--pf-border-strong);
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+}
+.user-card__term:active { transform: translateY(1px); }
+.user-card__term-amt { font-weight: 900; color: var(--pf-text); }
+.user-card__term-rate { font-size: 12px; color: var(--pf-muted); }
+
+/* Selected state */
+.user-card__term.is-selected {
+  border-color: var(--pf-primary);
+  background: var(--pf-primary-soft);
+  box-shadow: 0 0 0 3px rgba(79,70,229,.25) inset;
+}
+
+/* Picker row (months) */
+.user-card__picker {
+  margin-top: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.user-card__picker label {
+  font-size: 13px; color: var(--pf-sub); font-weight: 700;
+}
+
+/* Pretty select */
+.select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding: 8px 34px 8px 12px;
+  border: 1px solid var(--pf-border);
+  background: rgba(255,255,255,.06);
+  border-radius: 12px;
+  font: inherit;
+  color: var(--pf-text);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.select:hover { background: rgba(255,255,255,.10); border-color: var(--pf-border-strong); }
+.select:focus {
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.35);
+  border-color: var(--pf-primary);
+}
+
+/* custom arrow */
+.select-wrapper { position: relative; display: inline-block; }
+.select-wrapper::after {
+  content: "";
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0; pointer-events: none;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--pf-sub);
+}
+
+/* Buttons */
+.btn-row { margin-top: 14px; display: flex; gap: 10px; }
+
+.btn {
+  border: 1px solid var(--pf-border);
+  background: rgba(255,255,255,.08);
+  color: var(--pf-text);
+  padding: 9px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform .06s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.btn:hover {
+  background: rgba(255,255,255,.12);
+  border-color: var(--pf-border-strong);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+}
+.btn:active { transform: translateY(1px); }
+
+.btn--ghost {
+  background: rgba(34,197,94,.14);
+  border-color: rgba(34,197,94,.35);
+  color: #b9f5c9;
+}
+.btn--ghost:hover {
+  background: rgba(34,197,94,.20);
+  border-color: rgba(34,197,94,.50);
+}
+
+.btn--primary {
+  background: var(--pf-primary);
+  border-color: var(--pf-primary);
+  color: #fff;
+}
+.btn--primary:hover {
+  box-shadow: 0 10px 26px rgba(79,70,229,.45);
+}
+
+/* Muted text */
+.user-card__muted { color: var(--pf-muted); font-size: 13px; }
+
+/* ─────────────────────────────────────────────────────────────
+   Light-on-light fix: when UserProfileCard lives inside the
+   (light) UserProfileModal, switch its design tokens to light.
+   ──────────────────────────────────────────────────────────── */
+.pfm-body .user-card {
+  /* Light tokens */
+  --pf-text: #0f172a;
+  --pf-sub: #334155;
+  --pf-muted: #64748b;
+  --pf-border: #e2e8f0;
+  --pf-border-strong: #cbd5e1;
+  --pf-primary: #4f46e5;
+  --pf-primary-soft: rgba(79, 70, 229, .10);
+  --pf-card: #ffffff;
+
+  color: var(--pf-text);
+  background: #fff;                 /* solid card on light modal */
+  border: 1px solid var(--pf-border);
+  backdrop-filter: none;            /* no glass blur on light */
+  box-shadow: 0 8px 20px rgba(2, 6, 23, .06);
+}
+
+.pfm-body .user-card__badge {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #e2e8f0;
+}
+
+.pfm-body .user-card__term {
+  background: #fff;
+}
+
+.pfm-body .user-card__term:hover {
+  background: #f8fafc;
+}
+
+.pfm-body .select {
+  background: #fff;
+}
+
+.pfm-body .btn {
+  background: #fff;
+  color: #0f172a;
+}
+
+.pfm-body .btn--ghost {
+  background: #ecfccb;
+  border-color: #d9f99d;
+  color: #166534;
+}
+
+.pfm-body .btn--primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}

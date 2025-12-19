@@ -1,0 +1,163 @@
+/* Outer shell */
+.up-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+}
+
+/* Header */
+.up-header {
+  margin-bottom: 20px;
+}
+
+.up-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--subtext);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.up-title {
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.up-subtitle {
+  margin: 0;
+  color: var(--subtext);
+  font-size: 14px;
+}
+
+/* Card */
+.up-card {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 20px 20px 18px;
+  border: 1px solid var(--ring);
+  box-shadow: var(--shadow);
+}
+
+.up-card--loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--subtext);
+}
+
+/* Grid for top fields */
+.up-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.2fr);
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .up-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Fields */
+.up-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.up-field--full {
+  margin-top: 8px;
+}
+
+/* Label row */
+.up-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.up-label-row label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.up-label-meta {
+  font-size: 12px;
+  color: var(--subtext);
+}
+
+/* Inputs / textareas */
+.up-field input,
+.up-field textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--ring);
+  padding: 9px 11px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #F9FAFB;
+  color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease,
+              background .15s ease;
+}
+
+.up-field input::placeholder,
+.up-field textarea::placeholder {
+  color: #9CA3AF;
+}
+
+.up-field textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.up-field input:focus,
+.up-field textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, .2),
+              0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+/* Hint text */
+.up-hint {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--subtext);
+}
+
+/* Divider + actions */
+.up-divider {
+  margin: 10px 0 14px;
+  border-top: 1px dashed #E5E7EB;
+}
+
+.up-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Responsive buttons */
+@media (max-width: 640px) {
+  .up-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .up-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Section below profile card (for LendingTermsEditor) */
+.up-section {
+  margin-top: 24px;
+}

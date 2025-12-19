@@ -1,0 +1,27 @@
+/* Badge */
+.pfb-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #111827; color: #fff; border: none; border-radius: 999px;
+  padding: 6px 10px; cursor: pointer;
+}
+.pfb-chip { background: #4f46e5; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+.pfb-amount { font-weight: 700; }
+
+/* Modal */
+.pfb-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 60;
+}
+.pfb-modal {
+  width: 420px; max-width: 92vw; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 10px 30px rgba(0,0,0,.12);
+}
+.pfb-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #e5e7eb; }
+.pfb-close { border: none; background: transparent; font-size: 18px; cursor: pointer; }
+.pfb-body { padding: 16px; }
+.pfb-field { display: grid; gap: 6px; margin-bottom: 14px; }
+.pfb-amount { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; }
+.pfb-amount input { width: 100%; border: none; outline: none; font-size: 16px; }
+.pfb-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.btn { border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn--primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.pfb-error { margin: 10px 16px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; padding: 10px; }
+.pfb-note { color: #6b7280; font-size: 14px; }

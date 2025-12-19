@@ -1,0 +1,210 @@
+.admin-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.admin-tabs button {
+  margin-right: 8px;
+  padding: 6px 12px;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+}
+
+.admin-tabs button.active {
+  background: #333;
+  color: #fff;
+}
+
+.admin-panel {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.admin-search input {
+  padding: 4px 8px;
+  margin-right: 8px;
+}
+
+.admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  border: 1px solid #eee;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.admin-error {
+  margin-top: 8px;
+  color: #b00020;
+}
+
+.admin-success {
+  margin: 8px 0;
+  color: #0a7a24;
+}
+
+/* Verification layout */
+
+.admin-verification-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+}
+
+.adm-verify-list {
+  border-right: 1px solid #eee;
+  padding-right: 16px;
+}
+
+.adm-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.adm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.adm-list-item {
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+}
+
+.adm-list-item:hover {
+  background: #f7f7f7;
+}
+
+.adm-list-item.selected {
+  border-color: #333;
+  background: #f0f0f0;
+}
+
+.adm-list-name {
+  font-weight: 600;
+}
+
+.adm-list-email {
+  font-size: 12px;
+  color: #555;
+}
+
+.adm-list-date {
+  font-size: 12px;
+  color: #777;
+}
+
+.adm-empty {
+  padding: 8px;
+  color: #555;
+}
+
+.adm-verify-detail {
+  min-height: 200px;
+}
+
+.adm-placeholder {
+  color: #666;
+}
+
+.adm-detail-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-detail-email,
+.adm-detail-status,
+.adm-detail-notes {
+  font-size: 14px;
+  color: #555;
+}
+
+.adm-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.adm-doc-card {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fafafa;
+}
+
+.adm-doc-label {
+  font-size: 13px;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.adm-doc-img {
+  width: 100%;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.adm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-primary,
+.btn-danger {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-primary {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.btn-danger {
+  background: #c62828;
+  color: #fff;
+}
