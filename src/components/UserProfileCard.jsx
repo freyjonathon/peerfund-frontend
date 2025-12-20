@@ -96,7 +96,11 @@ const UserProfileCard = ({ user, onRequestLoan, hideActions = false }) => {
 
       let data = null;
       const text = await res.text();
-      try { data = text ? JSON.parse(text) : null; } catch {}
+      try {
+      data = text ? JSON.parse(text) : null;
+    } catch (err) {
+      // Non-JSON response (e.g., empty body or HTML error). Keep data as null.
+    }
 
       if (!res.ok) {
         const msg = data?.message || data?.error || `${res.status} ${res.statusText}`;

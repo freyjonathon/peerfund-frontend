@@ -14,7 +14,8 @@ function getCurrentUserId() {
   try {
     const payload = JSON.parse(atob(t.split('.')[1] || ''));
     return payload?.userId ?? null;
-  } catch {
+    } catch (err) {
+    // Invalid/expired token or malformed payload
     return null;
   }
 }
@@ -41,10 +42,12 @@ async function authFetch(url, options = {}) {
     headers,
     credentials: 'include',
   });
-  if (res.status === 401) {
+    if (res.status === 401) {
     try {
       console.warn('401 on', url, await res.text());
-    } catch {}
+    } catch (err) {
+      // Could not read body; ignore
+    }
     window.location.assign('/login');
     throw new Error('Unauthorized');
   }
@@ -306,7 +309,8 @@ export default function MoneySummary() {
       const val = !!d?.hasLoanPaymentMethod;
       setHasLoanPM(val);
       return val;
-    } catch {
+        } catch (err) {
+      // Endpoint failed or user has no saved payment method yet
       setHasLoanPM(false);
       return false;
     }
@@ -356,8 +360,9 @@ export default function MoneySummary() {
           });
         }
       }
-    } catch {
-      /* ignore */
+        } catch (err) {
+      // Non-fatal: this section can fail and we still render the page
+      // console.warn('fetchMarketOpenRequests section failed', err);
     }
 
     // (B) My OPEN requests that already have offers
@@ -373,9 +378,11 @@ export default function MoneySummary() {
             String(x.borrowerId || x?.borrower?.id) === String(me)
         );
       }
-    } catch {
-      /* ignore */
+        } catch (err) {
+      // Non-fatal: this section can fail and we still render the page
+      // console.warn('fetchMarketOpenRequests section failed', err);
     }
+
 
     const keepNow = [];
     const toProbe = [];
@@ -400,7 +407,10 @@ export default function MoneySummary() {
               setOffersByLoanId((m) => ({ ...m, [req.id]: arr }));
               return req;
             }
-          } catch {}
+            } catch (err) {
+            // Non-fatal: probing offers failed for this request
+          }
+
           return null;
         })
       );
@@ -458,9 +468,10 @@ export default function MoneySummary() {
           status: d.status || 'PENDING',
         };
       });
-    } catch {
-      return [];
-    }
+    } catch (err) {
+  // Non-fatal: if this fetch fails, just treat as no results
+  return [];
+}
   }, []);
 
   const fetchSummary = useCallback(
@@ -995,7 +1006,7 @@ export default function MoneySummary() {
           onClick={() => setOpenSec((s) => ({ ...s, given: !s.given }))}
           aria-expanded={openSec.given}
         >
-          <div className="ms-subheading">Loans Given (I'm the Lender)</div>
+          <div className="ms-subheading">Loans Given (I&apos;m the Lender)</div>
           <div className="ms-caret">{openSec.given ? '▾' : '▸'}</div>
         </button>
         {openSec.given && (
@@ -1019,7 +1030,7 @@ export default function MoneySummary() {
           aria-expanded={openSec.received}
         >
           <div className="ms-subheading">
-            Loans Received (I'm the Borrower)
+            Loans Received (I&apos;m the Borrower)
           </div>
           <div className="ms-caret">{openSec.received ? '▾' : '▸'}</div>
         </button>

@@ -31,7 +31,10 @@ export async function createDepositIntent({ amountDollars }) {
 
   const text = await res.text();
   let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch {}
+  try { data = text ? JSON.parse(text) : {}; } 
+  catch (err) {
+  // ignore / non-fatal
+}
 
   if (!res.ok) {
     throw new Error(data.error || text || 'Failed to create deposit');

@@ -70,10 +70,15 @@ export default function SignUp() {
         body: JSON.stringify(payload),
       });
 
-      // Read body as text first; then try to parse JSON so we can always show something
       const text = await res.text();
       let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch {}
+
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch (err) {
+        // Response was not valid JSON (e.g. empty body or HTML error page)
+      }
+
 
       if (!res.ok) {
         // Prefer server-provided message
