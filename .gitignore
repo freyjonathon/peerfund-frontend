@@ -1,0 +1,15 @@
+# dependencies
+node_modules
+node_modules/.cache
+
+# production build
+build
+
+# env files
+.env
+.env.local
+.env.production
+.env.development
+
+# OS / editor junk
+.DS_Store
