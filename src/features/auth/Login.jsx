@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 
+// ✅ Uses env var in Vercel, defaults to local for dev
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
+
 const Login = () => {
   const [formData, setFormData] = useState({
     phone: '',
@@ -19,21 +22,32 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErr('');
+
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5050/api/auth/login', {
+
+      // ✅ Call your deployed backend (or localhost in dev)
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ok even if you aren't using cookies
         body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data = null;
 
-      if (res.ok && data.token) {
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch (err) {
+        // Not JSON (could be HTML error), keep data null
+      }
+
+      if (res.ok && data?.token) {
         localStorage.setItem('token', data.token);
         navigate('/dashboard');
       } else {
-        setErr(data.error || 'Login failed');
+        setErr(data?.error || data?.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
