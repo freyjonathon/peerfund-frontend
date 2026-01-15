@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 
+// ✅ Vercel env var. Locally falls back to localhost
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
+
 function normalizePhone(p) {
-  // keep digits only; allow 10–15 (intl). Adjust to your rules.
   return (p || '').replace(/\D+/g, '').slice(0, 15);
 }
 function normalizeEmail(e) {
@@ -12,15 +14,9 @@ function normalizeEmail(e) {
 }
 function niceConflictMessage(errText = '') {
   const t = String(errText || '').toLowerCase();
-
-  // Prefer human, field-specific messages
   if (t.includes('email') && t.includes('already')) return 'That email is already registered.';
   if (t.includes('phone') && t.includes('already')) return 'That phone number is already registered.';
-
-  // Prisma P2002 sometimes returns the index/target name; make that human-ish
   if (t.includes('p2002')) return 'An account already exists with these details.';
-
-  // Generic conflict fallback (NO Stripe wording)
   return 'Account already exists with these details.';
 }
 
@@ -32,7 +28,10 @@ export default function SignUp() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((s) => ({ ...s, [name]: value }));
+    setFormData((s) => ({
+      ...s,
+      [name]: name === 'phone' ? normalizePhone(value) : value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -45,7 +44,7 @@ export default function SignUp() {
       name: formData.name.trim(),
       email: normalizeEmail(formData.email),
       phone: normalizePhone(formData.phone),
-      password: formData.password, // hash happens server-side
+      password: formData.password,
     };
 
     // client-side checks
@@ -64,7 +63,9 @@ export default function SignUp() {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/register', {
+
+      // ✅ matches your backend controller: POST /api/auth/register
+      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -72,30 +73,24 @@ export default function SignUp() {
 
       const text = await res.text();
       let data = null;
-
       try {
         data = text ? JSON.parse(text) : null;
-      } catch (err) {
-        // Response was not valid JSON (e.g. empty body or HTML error page)
+      } catch (_) {
+        // non-JSON response (HTML error page, etc.)
       }
 
-
       if (!res.ok) {
-        // Prefer server-provided message
         const serverMsg = data?.error || data?.message || text || '';
-        if (res.status === 409) {
-          throw new Error(niceConflictMessage(serverMsg));
-        }
+        if (res.status === 409) throw new Error(niceConflictMessage(serverMsg));
         throw new Error(serverMsg || 'Registration failed.');
       }
 
-      // success
       const token = data?.token;
       if (token) localStorage.setItem('token', token);
       navigate('/dashboard');
     } catch (e) {
       console.error('Registration error:', e);
-      setErr(e.message || 'Registration failed.');
+      setErr(e?.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -108,6 +103,7 @@ export default function SignUp() {
           <div className="auth-logo">PF</div>
           <div className="auth-title">Create Your Account</div>
         </div>
+
         <div className="auth-sub">
           Join PeerFund and start lending or borrowing with your community.
         </div>

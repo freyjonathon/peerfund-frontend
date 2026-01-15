@@ -3,6 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './VerificationPage.css';
 
+// ✅ Vercel env var. Locally falls back to localhost
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
+
 const VerificationPage = () => {
   const navigate = useNavigate();
 
@@ -15,6 +18,18 @@ const VerificationPage = () => {
 
   const token = localStorage.getItem('token');
 
+  const safeJson = async (res) => {
+    const text = await res.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      // If server returns HTML or plain text, this prevents "Unexpected token <"
+      throw new Error(text || 'Non-JSON response from server');
+    }
+    return data;
+  };
+
   const fetchStatus = async () => {
     if (!token) {
       setError('Not logged in');
@@ -24,7 +39,9 @@ const VerificationPage = () => {
 
     try {
       setError('');
-      const res = await fetch('/api/verification/status', {
+
+      // ✅ IMPORTANT: call the API domain, not the frontend domain
+      const res = await fetch(`${API_BASE_URL}/api/verification/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -33,7 +50,7 @@ const VerificationPage = () => {
         throw new Error(text || 'Failed to load verification status');
       }
 
-      const data = await res.json();
+      const data = await safeJson(res);
       console.log('[Verification] status response:', data);
 
       setChecklist(data);
@@ -84,7 +101,8 @@ const VerificationPage = () => {
       setError('');
       setSubmitMessage('');
 
-      const res = await fetch(endpoint, {
+      // ✅ IMPORTANT: prefix API_BASE_URL
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -92,25 +110,18 @@ const VerificationPage = () => {
         body: formData,
       });
 
-      const text = await res.text();
       if (!res.ok) {
+        const text = await res.text();
         throw new Error(text || 'Upload failed');
       }
 
-      let data = {};
-      try {
-        data = JSON.parse(text);
-      } catch {
-        // if backend returns plain text, ignore JSON parse error
-      }
-
+      const data = await safeJson(res);
       console.log('[Verification] upload response:', data);
 
-      if (data.checklist) {
+      if (data?.checklist) {
         setChecklist(data.checklist);
         setStatus(data.checklist.status || status);
       } else {
-        // If response doesn’t include checklist, just refresh from backend
         await fetchStatus();
       }
 
@@ -136,37 +147,27 @@ const VerificationPage = () => {
         </>
       );
     }
-    if (status === 'APPROVED') {
-      return 'You are verified! Redirecting to dashboard…';
-    }
-    if (status === 'ERROR') {
-      return 'We were unable to load your verification status. Please try again in a moment.';
-    }
+    if (status === 'APPROVED') return 'You are verified! Redirecting to dashboard…';
+    if (status === 'ERROR') return 'We were unable to load your verification status. Please try again in a moment.';
     return 'Unknown status.';
   };
 
-  const allUploaded =
-    checklist?.hasIdFront && checklist?.hasIdBack && checklist?.hasSelfie;
+  const allUploaded = checklist?.hasIdFront && checklist?.hasIdBack && checklist?.hasSelfie;
 
   const handleSubmitForReview = async () => {
-    // In your backend, uploads already flip verificationStatus to PENDING.
-    // This button is mainly to give the user a clear "I'm done" action.
     await fetchStatus();
     if (allUploaded) {
       setSubmitMessage(
         'Your photos are saved. An admin will review your account shortly. You will get full access once you are approved.'
       );
     } else {
-      setSubmitMessage(
-        'Please upload front of ID, back of ID, and a selfie before submitting.'
-      );
+      setSubmitMessage('Please upload front of ID, back of ID, and a selfie before submitting.');
     }
   };
 
   return (
     <div className="verify-shell">
       <div className="verify-card">
-        {/* Top: back + small step label */}
         <div
           style={{
             display: 'flex',
@@ -203,65 +204,49 @@ const VerificationPage = () => {
         {error && <div className="verify-error">{error}</div>}
 
         <div className="verify-grid">
-          {/* ID Front */}
           <div className="verify-field">
             <h3>Front of ID</h3>
             <p>Upload a clear photo of the front of your government-issued ID.</p>
             <input type="file" id="idFront" accept="image/*" />
             <button
               type="button"
-              onClick={() =>
-                uploadOne('idFront', '/api/verification/id/front')
-              }
+              onClick={() => uploadOne('idFront', '/api/verification/id/front')}
               disabled={uploading}
             >
               Upload front of ID
             </button>
-            {checklist?.hasIdFront && (
-              <div className="verify-ok">✓ Front of ID on file</div>
-            )}
+            {checklist?.hasIdFront && <div className="verify-ok">✓ Front of ID on file</div>}
           </div>
 
-          {/* ID Back */}
           <div className="verify-field">
             <h3>Back of ID</h3>
             <p>Upload a clear photo of the back of your ID.</p>
             <input type="file" id="idBack" accept="image/*" />
             <button
               type="button"
-              onClick={() =>
-                uploadOne('idBack', '/api/verification/id/back')
-              }
+              onClick={() => uploadOne('idBack', '/api/verification/id/back')}
               disabled={uploading}
             >
               Upload back of ID
             </button>
-            {checklist?.hasIdBack && (
-              <div className="verify-ok">✓ Back of ID on file</div>
-            )}
+            {checklist?.hasIdBack && <div className="verify-ok">✓ Back of ID on file</div>}
           </div>
 
-          {/* Selfie */}
           <div className="verify-field">
             <h3>Selfie</h3>
             <p>Upload a selfie. Make sure your face is clearly visible.</p>
             <input type="file" id="selfie" accept="image/*" />
             <button
               type="button"
-              onClick={() =>
-                uploadOne('selfie', '/api/verification/selfie')
-              }
+              onClick={() => uploadOne('selfie', '/api/verification/selfie')}
               disabled={uploading}
             >
               Upload selfie
             </button>
-            {checklist?.hasSelfie && (
-              <div className="verify-ok">✓ Selfie on file</div>
-            )}
+            {checklist?.hasSelfie && <div className="verify-ok">✓ Selfie on file</div>}
           </div>
         </div>
 
-        {/* Big "Submit" button at the bottom */}
         <div style={{ marginTop: 24 }}>
           <button
             type="button"
@@ -288,8 +273,8 @@ const VerificationPage = () => {
         )}
 
         <p className="verify-footnote">
-          Once all three photos are uploaded and submitted, an admin will review
-          your account. You’ll get full access to PeerFund after approval.
+          Once all three photos are uploaded and submitted, an admin will review your account.
+          You’ll get full access to PeerFund after approval.
         </p>
       </div>
     </div>
