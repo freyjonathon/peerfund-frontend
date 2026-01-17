@@ -12,6 +12,7 @@ import Home from './features/home/Home';
 import SignUp from './features/auth/SignUp';
 import Login from './features/auth/Login';
 import PrivateRoute from './features/auth/PrivateRoute';
+
 import Dashboard from './features/dashboard/Dashboard';
 import Documents from './features/dashboard/Documents';
 import TransactionHistory from './features/dashboard/TransactionHistory';
@@ -30,14 +31,16 @@ import DirectRequestConfirm from './features/direct/DirectRequestConfirm';
 import WalletPage from './features/wallet/WalletPage';
 import PaymentMethod from './features/wallet/PaymentMethod';
 
-// Admin imports
-import RequireAdmin from './components/RequireAdmin';
+// Admin pages
 import AdminDashboard from './features/admin/AdminDashboard';
 import AdminVerificationDetail from './features/admin/AdminVerificationDetail';
 
-// NEW: verification imports
+// Verification gate + page
 import VerifiedRoute from './features/auth/VerifiedRoute';
 import VerificationPage from './features/verification/VerificationPage';
+
+// ✅ NEW: admin-only route guard (Outlet-based)
+import AdminRoute from './routes/AdminRoute';
 
 /* ---------------- Stripe publishable key (CRA + Vite) ---------------- */
 const rawPk =
@@ -65,14 +68,14 @@ function getStripe() {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes */}
+      {/* ---------------- Public routes ---------------- */}
       <Route path="/" element={<Home />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/login" element={<Login />} />
       <Route path="/loan/:loanId/repayments" element={<RepaymentTracker />} />
       <Route path="/transaction-history" element={<TransactionHistory />} />
 
-      {/* NEW: verification route */}
+      {/* ---------------- Verification page (USER flow) ---------------- */}
       <Route
         path="/verify"
         element={
@@ -82,32 +85,24 @@ function AppRoutes() {
         }
       />
 
-      {/* Admin route (protected, no Layout shell for now) */}
+      {/* ---------------- Admin routes (NO verification gate) ----------------
+          Admins are allowed here even if not verified.
+      */}
       <Route
-        path="/admin"
         element={
           <PrivateRoute>
-            <RequireAdmin>
-              <AdminDashboard />
-            </RequireAdmin>
+            <AdminRoute />
           </PrivateRoute>
         }
-      />
+      >
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route
+          path="/admin/verification/:userId"
+          element={<AdminVerificationDetail />}
+        />
+      </Route>
 
-            {/* Admin verification detail */}
-      <Route
-        path="/admin/verification/:userId"
-        element={
-          <PrivateRoute>
-            <RequireAdmin>
-              <AdminVerificationDetail />
-            </RequireAdmin>
-          </PrivateRoute>
-        }
-      />
-
-
-      {/* Protected layout with sidebar/navbar + verification gate */}
+      {/* ---------------- Protected app shell + verification gate ---------------- */}
       <Route
         element={
           <PrivateRoute>
@@ -167,8 +162,8 @@ const App = () => {
       >
         <h2 style={{ marginTop: 0 }}>Stripe not configured</h2>
         <p style={{ lineHeight: 1.6 }}>
-          The publishable key is missing or invalid. Add it to{' '}
-          <code>.env</code> and restart the dev server.
+          The publishable key is missing or invalid. Add it to <code>.env</code>{' '}
+          and restart the dev server.
         </p>
         <pre
           style={{
