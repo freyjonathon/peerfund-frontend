@@ -7,10 +7,25 @@ function normalizePhone(p) {
   return (p || '').replace(/\D+/g, '').slice(0, 15);
 }
 
-// ✅ Vercel env var. Locally falls back to localhost
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
 
-export default function Login() {
+function getJwtPayload(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+const Login = () => {
   const [formData, setFormData] = useState({ phone: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -28,38 +43,34 @@ export default function Login() {
     e.preventDefault();
     setErr('');
 
-    // quick client-side check
-    if (!formData.phone || !formData.password) {
-      setErr('Please enter your phone and password.');
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // ✅ matches your backend controller: POST /api/auth/login
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: normalizePhone(formData.phone),
-          password: formData.password,
-        }),
+        body: JSON.stringify(formData),
       });
 
       const text = await res.text();
       let data = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch (_) {
-        // non-JSON response
+      try { data = text ? JSON.parse(text) : null; } catch (_) {}
+
+      if (!res.ok || !data?.token) {
+        setErr(data?.error || data?.message || 'Login failed');
+        return;
       }
 
-      if (res.ok && data?.token) {
-        localStorage.setItem('token', data.token);
-        navigate('/dashboard');
+      localStorage.setItem('token', data.token);
+
+      // ✅ Route Admins to admin dashboard, everyone else to normal dashboard
+      const payload = getJwtPayload(data.token);
+      const role = payload?.role;
+
+      if (role === 'ADMIN') {
+        navigate('/admin', { replace: true });
       } else {
-        setErr(data?.error || data?.message || 'Login failed');
+        navigate('/dashboard', { replace: true });
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -71,15 +82,13 @@ export default function Login() {
 
   return (
     <div className="auth-wrap">
-      <form className="auth-card" onSubmit={handleSubmit} noValidate>
+      <form className="auth-card" onSubmit={handleSubmit}>
         <div className="auth-header">
           <div className="auth-logo">PF</div>
           <div className="auth-title">Welcome Back</div>
         </div>
 
-        <div className="auth-sub">
-          Sign in to continue to your PeerFund account.
-        </div>
+        <div className="auth-sub">Sign in to continue to your PeerFund account.</div>
 
         <div className="auth-field">
           <label className="auth-label" htmlFor="phone">Phone</label>
@@ -122,11 +131,11 @@ export default function Login() {
           <button type="button" className="auth-link" onClick={() => navigate('/')}>
             ← Back to Home
           </button>
-          <Link to="/reset-password" className="auth-link">
-            Forgot Password?
-          </Link>
+          <Link to="/reset-password" className="auth-link">Forgot Password?</Link>
         </div>
       </form>
     </div>
   );
-}
+};
+
+export default Login;

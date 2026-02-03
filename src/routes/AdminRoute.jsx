@@ -1,60 +1,30 @@
-// src/routes/VerifiedRoute.jsx
-import React, { useEffect, useState } from 'react';
+// src/features/auth/AdminRoute.jsx
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
-// Uses env var in Vercel, defaults to local for dev
-const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
+function getJwtPayload(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
 
-export default function VerifiedRoute() {
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+export default function AdminRoute() {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
+  const payload = getJwtPayload(token);
+  const role = (payload?.role || '').toUpperCase();
 
-    if (!token) {
-      setAllowed(false);
-      setLoading(false);
-      return;
-    }
-
-    const run = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/verification/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const text = await res.text();
-        let data = null;
-
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch {
-          throw new Error(text || 'Non-JSON response from server');
-        }
-
-        // ✅ Admin bypass: no verification requirement
-        const role = (data?.role || '').toUpperCase();
-        if (role === 'ADMIN') {
-          setAllowed(true);
-          return;
-        }
-
-        // ✅ Users must be approved
-        const status = (data?.status || 'PENDING').toUpperCase();
-        setAllowed(status === 'APPROVED');
-      } catch (e) {
-        console.error('VerifiedRoute error:', e);
-        setAllowed(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    run();
-  }, []);
-
-  if (loading) return null;
-  if (!allowed) return <Navigate to="/verify" replace />;
+  if (role !== 'ADMIN') return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }

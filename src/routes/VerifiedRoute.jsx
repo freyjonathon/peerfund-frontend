@@ -1,11 +1,26 @@
-// src/routes/VerifiedRoute.jsx
+// src/features/auth/VerifiedRoute.jsx
 import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
 
+function getJwtPayload(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 export default function VerifiedRoute() {
-  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
@@ -18,16 +33,13 @@ export default function VerifiedRoute() {
       return;
     }
 
-    // ✅ Admin bypass (never requires identity verification)
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      if (payload?.role === 'ADMIN') {
-        setAllowed(true);
-        setLoading(false);
-        return;
-      }
-    } catch (e) {
-      // if token parse fails, fall back to backend check below
+    // ✅ Admins bypass verification entirely
+    const payload = getJwtPayload(token);
+    const role = (payload?.role || '').toUpperCase();
+    if (role === 'ADMIN') {
+      setAllowed(true);
+      setLoading(false);
+      return;
     }
 
     const run = async () => {
@@ -36,16 +48,23 @@ export default function VerifiedRoute() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        const contentType = res.headers.get('content-type') || '';
         const text = await res.text();
-        let data = null;
 
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch {
-          throw new Error(text || 'Non-JSON response from server');
+        if (!res.ok) {
+          setAllowed(false);
+          return;
         }
 
-        const status = data?.status || 'PENDING';
+        // Prevent "Unexpected token <" by refusing HTML responses
+        if (!contentType.includes('application/json')) {
+          console.error('VerifiedRoute got non-JSON response:', text.slice(0, 200));
+          setAllowed(false);
+          return;
+        }
+
+        const data = text ? JSON.parse(text) : null;
+        const status = (data?.status || 'PENDING').toUpperCase();
         setAllowed(status === 'APPROVED');
       } catch (e) {
         console.error('VerifiedRoute error:', e);
@@ -59,10 +78,6 @@ export default function VerifiedRoute() {
   }, []);
 
   if (loading) return null;
-
-  if (!allowed) {
-    return <Navigate to="/verify" replace state={{ from: location }} />;
-  }
-
+  if (!allowed) return <Navigate to="/verify" replace />;
   return <Outlet />;
 }

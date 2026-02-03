@@ -1,7 +1,9 @@
 // src/features/admin/AdminVerificationDetail.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import './AdminDashboard.css'; // reuse same styles
+import './AdminDashboard.css';
+
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
 
 const AdminVerificationDetail = () => {
   const { userId } = useParams();
@@ -22,11 +24,21 @@ const AdminVerificationDetail = () => {
       try {
         setError('');
         setLoading(true);
-        const res = await fetch(`/api/admin/verification/${userId}/detail`, {
+
+        const res = await fetch(`${API_BASE_URL}/api/admin/verification/${userId}/detail`, {
           headers: authHeaders,
         });
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
+
+        const contentType = res.headers.get('content-type') || '';
+        const text = await res.text();
+
+        if (!res.ok) throw new Error(text || 'Failed to load detail');
+
+        if (!contentType.includes('application/json')) {
+          throw new Error('Server returned non-JSON response (check API base URL)');
+        }
+
+        const data = text ? JSON.parse(text) : null;
         setDetail(data);
       } catch (e) {
         console.error('AdminVerificationDetail load error:', e);
@@ -55,11 +67,7 @@ const AdminVerificationDetail = () => {
   if (error) {
     return (
       <div className="admin-shell">
-        <button
-          className="admin-back"
-          onClick={() => navigate('/admin')}
-          type="button"
-        >
+        <button className="admin-back" onClick={() => navigate('/admin')} type="button">
           ← Back to admin
         </button>
         <div className="admin-error">{error}</div>
@@ -70,11 +78,7 @@ const AdminVerificationDetail = () => {
   if (!detail) {
     return (
       <div className="admin-shell">
-        <button
-          className="admin-back"
-          onClick={() => navigate('/admin')}
-          type="button"
-        >
+        <button className="admin-back" onClick={() => navigate('/admin')} type="button">
           ← Back to admin
         </button>
         <div>No detail found.</div>
@@ -103,12 +107,10 @@ const AdminVerificationDetail = () => {
         <h3>{label}</h3>
         <p>{doc.title || doc.type}</p>
         <p className="admin-doc-meta">
-          {doc.mimeType} •{' '}
-          {doc.createdAt
-            ? new Date(doc.createdAt).toLocaleString()
-            : 'unknown time'}
+          {doc.mimeType} • {doc.createdAt ? new Date(doc.createdAt).toLocaleString() : 'unknown time'}
         </p>
-        {/* Reuse existing DocumentViewer route */}
+
+        {/* This opens your FRONTEND viewer route */}
         <a
           href={`/documents/${doc.id}`}
           target="_blank"
@@ -124,11 +126,7 @@ const AdminVerificationDetail = () => {
   return (
     <div className="admin-shell">
       <header className="admin-header">
-        <button
-          className="admin-back"
-          onClick={() => navigate('/admin')}
-          type="button"
-        >
+        <button className="admin-back" onClick={() => navigate('/admin')} type="button">
           ← Back to admin
         </button>
         <h1>Verification detail</h1>
@@ -141,36 +139,19 @@ const AdminVerificationDetail = () => {
         <h2>User info</h2>
         <div className="admin-user-info">
           <div>
+            <div><strong>Name:</strong> {user.name || '—'}</div>
+            <div><strong>Email:</strong> {user.email}</div>
             <div>
-              <strong>Name:</strong> {user.name || '—'}
-            </div>
-            <div>
-              <strong>Email:</strong> {user.email}
-            </div>
-            <div>
-              <strong>Joined:</strong>{' '}
-              {user.createdAt
-                ? new Date(user.createdAt).toLocaleString()
-                : '—'}
+              <strong>Joined:</strong> {user.createdAt ? new Date(user.createdAt).toLocaleString() : '—'}
             </div>
           </div>
           <div>
             <div>
-              <strong>Status:</strong>{' '}
-              {user.verificationStatus || checklist?.status || 'UNKNOWN'}
+              <strong>Status:</strong> {user.verificationStatus || checklist?.status || 'UNKNOWN'}
             </div>
-            <div>
-              <strong>ID front:</strong>{' '}
-              {checklist?.hasIdFront ? '✓' : '—'}
-            </div>
-            <div>
-              <strong>ID back:</strong>{' '}
-              {checklist?.hasIdBack ? '✓' : '—'}
-            </div>
-            <div>
-              <strong>Selfie:</strong>{' '}
-              {checklist?.hasSelfie ? '✓' : '—'}
-            </div>
+            <div><strong>ID front:</strong> {checklist?.hasIdFront ? '✓' : '—'}</div>
+            <div><strong>ID back:</strong> {checklist?.hasIdBack ? '✓' : '—'}</div>
+            <div><strong>Selfie:</strong> {checklist?.hasSelfie ? '✓' : '—'}</div>
           </div>
         </div>
       </section>
