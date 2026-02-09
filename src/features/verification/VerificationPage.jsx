@@ -273,7 +273,7 @@ const VerificationPage = () => {
         )}
 
         <p className="verify-footnote">
-          Once all three photos are uploaded and submitted, an admin will review your account.
+          Once all three (3) photos are uploaded and submitted, an admin will review your account.
           You’ll get full access to PeerFund after approval.
         </p>
       </div>
