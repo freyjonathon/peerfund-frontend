@@ -99,10 +99,9 @@ const Dashboard = () => {
     if (!newPost.trim()) return;
     try {
       await apiFetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newPost }),
-      });
+      method: 'POST',
+      body: JSON.stringify({ content: newPost }),
+    });
       setNewPost('');
       fetchPosts();
     } catch (err) {
@@ -141,8 +140,8 @@ const Dashboard = () => {
       // 2) Call your SuperUser upgrade endpoint
       await apiFetch('/api/users/superuser/upgrade', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
       });
+
 
       setSuperUser(true);
       alert(
