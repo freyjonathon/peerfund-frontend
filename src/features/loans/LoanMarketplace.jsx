@@ -182,14 +182,18 @@ export default function LoanMarketplace() {
 
                   {/* Actions */}
                   <div className="lm-actions-top" style={{ gap: '.5rem', flexWrap: 'wrap' }}>
-                    {/* UPDATED: instead of Link, open modal */}
                     <button
+                      type="button"
                       className="action-btn primary"
-                      onClick={() => setSelectedLoanId(loan.id)}
+                      onClick={() => {
+                        setSelectedLoanId(loan.id);
+                        toggle(loan.id); // ✅ use toggle so inline discussion can expand
+                      }}
+                      aria-expanded={isOpen}
+                      aria-controls={`loan-details-${loan.id}`}
                     >
                       💬 View Convo / 💵 Make Offer
                     </button>
- 
                   </div>
                 </div>
 
@@ -224,4 +228,3 @@ export default function LoanMarketplace() {
     </div>
   );
 }
-

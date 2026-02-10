@@ -58,7 +58,11 @@ const TransactionHistory = () => {
     if (direction === 'DEBIT') return 'sent';
     if (direction === 'CREDIT') return 'received';
 
-    if (['DISBURSEMENT', 'WITHDRAWAL', 'SUPERUSER_FEE', 'FEE', 'BANK_FEE', 'PLATFORM_FEE'].includes(t)) {
+    if (
+      ['DISBURSEMENT', 'WITHDRAWAL', 'SUPERUSER_FEE', 'FEE', 'BANK_FEE', 'PLATFORM_FEE'].includes(
+        t
+      )
+    ) {
       return 'sent';
     }
     if (['DEPOSIT', 'REPAYMENT'].includes(t)) {
@@ -233,12 +237,7 @@ const TransactionHistory = () => {
             alignSelf: 'flex-end',
           }}
         >
-          <CSVLink
-            data={csvData}
-            headers={csvHeaders}
-            filename="transactions.csv"
-            style={{ textDecoration: 'none' }}
-          >
+          <CSVLink data={csvData} headers={csvHeaders} filename="transactions.csv" style={{ textDecoration: 'none' }}>
             <button
               style={{
                 padding: '0.5rem 0.9rem',
@@ -331,6 +330,8 @@ const TransactionHistory = () => {
                       {tx.loanId ? (
                         <button
                           type="button"
+                          onClick={() => handleLoanClick(tx.loanId)}
+                          aria-label={`Open ${loanLabel}`}
                           style={{
                             padding: '2px 8px',
                             borderRadius: 999,
@@ -338,7 +339,6 @@ const TransactionHistory = () => {
                             background: '#f8fafc',
                             fontSize: 12,
                             cursor: 'pointer',
-                            pointerEvents: 'none',
                           }}
                         >
                           {loanLabel}

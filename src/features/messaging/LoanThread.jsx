@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 const LoanThread = () => {
@@ -7,7 +7,7 @@ const LoanThread = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/loans/${loanId}/messages`, {
         headers: {
@@ -16,13 +16,13 @@ const LoanThread = () => {
       });
       if (!res.ok) throw new Error('Failed to load messages');
       const data = await res.json();
-      setMessages(data);
+      setMessages(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching messages:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [loanId]);
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -39,15 +39,17 @@ const LoanThread = () => {
 
       if (!res.ok) throw new Error('Failed to send message');
       setNewMessage('');
-      fetchMessages(); // Refresh messages
+      await fetchMessages(); // Refresh messages
     } catch (err) {
       console.error('Error sending message:', err);
     }
   };
 
   useEffect(() => {
+    if (!loanId) return;
+    setLoading(true);
     fetchMessages();
-  }, [loanId]);
+  }, [loanId, fetchMessages]);
 
   return (
     <div style={{ padding: '2rem', maxWidth: '700px', margin: 'auto' }}>
@@ -67,7 +69,8 @@ const LoanThread = () => {
                   marginBottom: '1rem',
                   padding: '1rem',
                   borderRadius: '8px',
-                  backgroundColor: msg.senderId === msg.currentUserId ? '#e8f5e9' : '#f1f1f1',
+                  backgroundColor:
+                    msg.senderId === msg.currentUserId ? '#e8f5e9' : '#f1f1f1',
                 }}
               >
                 <strong>{msg.sender?.name || 'User'}:</strong>
@@ -87,7 +90,9 @@ const LoanThread = () => {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
         />
-        <button onClick={sendMessage}>Send Message</button>
+        <button type="button" onClick={sendMessage}>
+          Send Message
+        </button>
       </div>
     </div>
   );

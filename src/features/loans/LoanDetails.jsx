@@ -43,6 +43,8 @@ const LoanDetails = () => {
 
   const submitOffer = async () => {
     try {
+      if (!loan) return;
+
       const payload = {
         amount: Number(loan.amount),
         duration: Number(offerForm.duration),
@@ -70,11 +72,14 @@ const LoanDetails = () => {
 
       if (!res.ok) throw new Error((await res.text()) || 'Failed to submit offer');
       const data = await res.json();
+
       alert('Offer submitted!');
       setLoan((prev) => ({
         ...prev,
         loanOffers: [data, ...(prev.loanOffers || [])],
       }));
+
+      // keep your defaults but clear message
       setOfferForm((f) => ({ ...f, message: '' }));
     } catch (err) {
       console.error('Error submitting offer:', err);
@@ -166,6 +171,8 @@ const LoanDetails = () => {
 
   // Who am I in this context?
   const iAmBorrower = userId === loan?.borrower?.id;
+  const iAmLenderCandidate = !!userId && !iAmBorrower;
+
   // Detect if *my* offer was accepted -> I'm the lender for this loan
   const isLenderOnThisLoan =
     !!loan?.loanOffers?.some(
@@ -192,6 +199,8 @@ const LoanDetails = () => {
         : '#f8fafc',
     color: '#0f172a',
   };
+
+  const showOfferForm = statusUpper === 'OPEN' && iAmLenderCandidate;
 
   return (
     <div style={{ padding: '2rem', position: 'relative' }}>
@@ -241,34 +250,130 @@ const LoanDetails = () => {
           onWalletSynced={(cents) => setWalletAvailableCents(cents)}
           onNeedMoreFunds={() => setShowWalletPanel(true)}
           onFunded={async () => {
-            // after funding completes, refresh the loan
             await fetchLoanDetails();
           }}
         />
       )}
 
       <hr />
+
+      {/* Lender: Make an Offer */}
+      {showOfferForm && (
+        <div
+          style={{
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            background: '#fff',
+            padding: '12px 14px',
+            marginBottom: 14,
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>Make an Offer</h3>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ minWidth: 160 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#475569' }}>Amount</label>
+              <input
+                name="amount"
+                value={offerForm.amount}
+                onChange={handleOfferChange}
+                disabled
+                style={{
+                  width: '100%',
+                  padding: 8,
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                }}
+              />
+            </div>
+
+            <div style={{ minWidth: 160 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#475569' }}>
+                Duration (months)
+              </label>
+              <input
+                name="duration"
+                type="number"
+                min="1"
+                value={offerForm.duration}
+                onChange={handleOfferChange}
+                style={{
+                  width: '100%',
+                  padding: 8,
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                }}
+              />
+            </div>
+
+            <div style={{ minWidth: 160 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#475569' }}>
+                Interest Rate (APR %)
+              </label>
+              <input
+                name="interestRate"
+                type="number"
+                min="0"
+                step="0.01"
+                value={offerForm.interestRate}
+                onChange={handleOfferChange}
+                style={{
+                  width: '100%',
+                  padding: 8,
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <label style={{ display: 'block', fontSize: 12, color: '#475569' }}>Message (optional)</label>
+            <textarea
+              name="message"
+              value={offerForm.message}
+              onChange={handleOfferChange}
+              placeholder="Add a note to the borrower…"
+              style={{
+                width: '100%',
+                padding: 8,
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                minHeight: 70,
+              }}
+            />
+          </div>
+
+          <button
+            onClick={submitOffer}
+            style={{
+              marginTop: 10,
+              background: '#0f172a',
+              border: '1px solid #0f172a',
+              color: '#fff',
+              fontWeight: 700,
+              padding: '8px 12px',
+              borderRadius: 10,
+              cursor: 'pointer',
+            }}
+          >
+            Submit Offer
+          </button>
+        </div>
+      )}
+
       <h3>Offers</h3>
 
       {loan.loanOffers?.length > 0 ? (
         loan.loanOffers.map((offer) => {
           const isOpen = !!expandedOffer[offer.id];
           const statusLabel =
-            (offer.status || '').toUpperCase() === 'ACCEPTED'
-              ? 'Accepted'
-              : 'Pending';
+            (offer.status || '').toUpperCase() === 'ACCEPTED' ? 'Accepted' : 'Pending';
           const badgeStyle =
             statusLabel === 'Accepted'
-              ? {
-                  background: '#dcfce7',
-                  color: '#166534',
-                  borderColor: '#86efac',
-                }
-              : {
-                  background: '#fef3c7',
-                  color: '#92400e',
-                  borderColor: '#fde68a',
-                };
+              ? { background: '#dcfce7', color: '#166534', borderColor: '#86efac' }
+              : { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' };
 
           return (
             <div
@@ -281,7 +386,6 @@ const LoanDetails = () => {
                 overflow: 'hidden',
               }}
             >
-              {/* Header row */}
               <button
                 onClick={() => toggleOffer(offer.id)}
                 aria-expanded={isOpen}
@@ -307,9 +411,7 @@ const LoanDetails = () => {
                       display: 'inline-block',
                     }}
                   />
-                  <span
-                    style={{ fontWeight: 700, color: '#0f172a' }}
-                  >
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
                     Offer from {offer.lender?.name || 'Unknown'}
                   </span>
                 </div>
@@ -338,20 +440,12 @@ const LoanDetails = () => {
                   >
                     {statusLabel}
                   </span>
-                  <span style={{ fontSize: 18, color: '#64748b' }}>
-                    {isOpen ? '▾' : '▸'}
-                  </span>
+                  <span style={{ fontSize: 18, color: '#64748b' }}>{isOpen ? '▾' : '▸'}</span>
                 </div>
               </button>
 
-              {/* Body */}
               {isOpen && (
-                <div
-                  style={{
-                    padding: '12px 14px 14px',
-                    borderTop: '1px solid #e2e8f0',
-                  }}
-                >
+                <div style={{ padding: '12px 14px 14px', borderTop: '1px solid #e2e8f0' }}>
                   <p>
                     <strong>Message:</strong> {offer.message || '—'}
                   </p>
@@ -404,12 +498,8 @@ const LoanDetails = () => {
       {statusUpper === 'FUNDED' && iAmBorrower && (
         <div style={{ marginTop: '2rem' }}>
           <h3>Repayments</h3>
-          <button onClick={() => setShowRepaymentForm(true)}>
-            Make a Payment
-          </button>
-          <button onClick={() => navigate(`/loan/${loan.id}/repayments`)}>
-            View Repayment Tracker
-          </button>
+          <button onClick={() => setShowRepaymentForm(true)}>Make a Payment</button>
+          <button onClick={() => navigate(`/loan/${loan.id}/repayments`)}>View Repayment Tracker</button>
           {showRepaymentForm && <RepaymentForm loanId={loan.id} />}
         </div>
       )}
@@ -423,17 +513,12 @@ const LoanDetails = () => {
           <p>No messages yet. Start the conversation!</p>
         ) : (
           messages.map((m) => (
-            <div
-              key={m.id}
-              style={{
-                borderTop: '1px solid #e5e7eb',
-                padding: '8px 0',
-              }}
-            >
+            <div key={m.id} style={{ borderTop: '1px solid #e5e7eb', padding: '8px 0' }}>
               <strong>{m.user?.name || 'User'}:</strong> {m.content}
             </div>
           ))
         )}
+
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <textarea
             placeholder="Write your message…"
@@ -471,16 +556,13 @@ const LoanDetails = () => {
           borrower={loan.borrower}
           onConfirm={async () => {
             try {
-              const res = await fetch(
-                `/api/loans/offers/${selectedOffer.id}/accept`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                  },
-                }
-              );
+              const res = await fetch(`/api/loans/offers/${selectedOffer.id}/accept`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+              });
 
               if (!res.ok) {
                 const errorText = await res.text();

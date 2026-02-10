@@ -21,13 +21,16 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [okMsg, setOkMsg] = useState('');
 
+  const displayAmount =
+    typeof amount === 'number' && Number.isFinite(amount) ? `$${amount.toFixed(2)}` : null;
+
   const handlePay = async () => {
     setLoading(true);
     setErrorMsg('');
     setOkMsg('');
 
     try {
-      const res = await axios.post(
+      await axios.post(
         `/api/loans/${loanId}/pay-next`,
         { source }, // 👈 send selected source
         {
@@ -45,10 +48,7 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
       }
     } catch (err) {
       console.error('payNextInstallment error', err);
-      const msg =
-        err?.response?.data?.error ||
-        err?.message ||
-        'Payment failed';
+      const msg = err?.response?.data?.error || err?.message || 'Payment failed';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -57,7 +57,13 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
 
   return (
     <div style={{ marginTop: 12 }}>
-     
+      {/* Optional amount display */}
+      {displayAmount && (
+        <div style={{ marginBottom: 8, fontSize: 13, color: '#334155' }}>
+          <strong>Next installment:</strong> {displayAmount}
+        </div>
+      )}
+
       {/* Source selector */}
       <div
         style={{
@@ -96,6 +102,7 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
       </div>
 
       <button
+        type="button"
         onClick={handlePay}
         disabled={loading}
         style={{
