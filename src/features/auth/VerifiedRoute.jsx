@@ -1,69 +1,86 @@
 // src/features/auth/VerifiedRoute.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+
+// ✅ Use the same API base logic as VerificationPage
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
+
+async function safeJson(res) {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(text || 'Non-JSON response from server');
+  }
+}
 
 const VerifiedRoute = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [allow, setAllow] = useState(false);
 
+  const token = useMemo(() => localStorage.getItem('token'), []);
+  const headers = useMemo(
+    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    [token]
+  );
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      setAllow(false);
-      return;
-    }
+    let cancelled = false;
 
     const run = async () => {
+      if (!token) {
+        if (!cancelled) {
+          setAllow(false);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        const headers = { Authorization: `Bearer ${token}` };
+        setLoading(true);
 
         // 1) Load profile so we can see the user's role
-        const profileRes = await fetch('/api/users/profile', { headers });
+        const profileRes = await fetch(`${API_BASE_URL}/api/users/profile`, { headers });
         if (!profileRes.ok) {
-          throw new Error('Failed to load profile');
+          const text = await profileRes.text();
+          throw new Error(text || 'Failed to load profile');
         }
-        const profile = await profileRes.json();
+        const profile = await safeJson(profileRes);
 
         // If ADMIN, skip verification entirely
-        if (profile.role === 'ADMIN') {
-          setAllow(true);
-          setLoading(false);
+        if (profile?.role === 'ADMIN') {
+          if (!cancelled) setAllow(true);
           return;
         }
 
         // 2) For normal users, check verification status
-        const verRes = await fetch('/api/verification/status', { headers });
+        const verRes = await fetch(`${API_BASE_URL}/api/verification/status`, { headers });
         if (!verRes.ok) {
-          throw new Error('Failed to load verification status');
+          const text = await verRes.text();
+          throw new Error(text || 'Failed to load verification status');
         }
-        const data = await verRes.json();
+        const data = await safeJson(verRes);
 
-        // Expect data.status from your verification controller
-        if (data.status === 'APPROVED') {
-          setAllow(true);
-        } else {
-          // PENDING / REJECTED / anything else → must go to /verify
-          setAllow(false);
-        }
+        const status = String(data?.status || '').toUpperCase();
+        if (!cancelled) setAllow(status === 'APPROVED');
       } catch (err) {
         console.error('VerifiedRoute error:', err);
-        // On error, be safe and send user to /verify instead of crashing
-        setAllow(false);
+        // Fail closed: send to verify if anything is unknown
+        if (!cancelled) setAllow(false);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     run();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, headers]);
 
   if (loading) {
-    return (
-      <div style={{ padding: 24 }}>
-        Checking your account status…
-      </div>
-    );
+    return <div style={{ padding: 24 }}>Checking your account status…</div>;
   }
 
   if (!allow) {
