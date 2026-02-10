@@ -3,22 +3,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe } from '@stripe/react-stripe-js';
+import { apiFetch } from '../../utils/api';
 
 /* ---------------- Stripe publishable key ---------------- */
 const rawPk = (process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '').trim();
 const pk = /^pk_(test|live)_[A-Za-z0-9_]+$/.test(rawPk) ? rawPk : '';
-
-/* ---------------- Auth header helpers ---------------- */
-function getToken() {
-  let t = localStorage.getItem('token') || '';
-  t = t.replace(/^"|"$/g, '');
-  if (t.toLowerCase().startsWith('bearer ')) t = t.slice(7);
-  return t || null;
-}
-function authHeaders() {
-  const t = getToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 
 /* ---------------- Stripe init (cached) ---------------- */
 let cachedStripePromise;
@@ -47,74 +36,90 @@ export default function PaymentMethodPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
 
-  const stripePromise = useMemo(getStripePromise, [pk]);
+  const stripePromise = useMemo(() => getStripePromise(), []);
 
   useEffect(() => {
-    const ac = new AbortController();
+    let alive = true;
+
     (async () => {
       try {
-        // Prefill name/email
+        setLoading(true);
+        setErrorMsg('');
+
+        // Prefill name/email (prod-safe)
         try {
-          const r = await fetch('/api/users/profile', {
-            headers: { ...authHeaders() },
-            signal: ac.signal,
-          });
-          if (r.ok) {
-            const u = await r.json();
-            if (u?.name) setFullName(u.name);
-            if (u?.email) setEmail(u.email);
-          }
-        } catch {
-          /* noop */
+          const u = await apiFetch('/api/users/profile');
+          if (!alive) return;
+          if (u?.name) setFullName(u.name);
+          if (u?.email) setEmail(u.email);
+        } catch (e) {
+          // non-fatal
+          console.warn('PaymentMethod: profile prefill failed:', e?.message || e);
         }
 
-        await refreshPrimary(ac.signal);
+        await refreshPrimary();
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
 
-    return () => ac.abort();
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function refreshPrimary(signal) {
+  async function refreshPrimary() {
     try {
-      const r = await fetch('/api/payment-method/mine', {
-        headers: { ...authHeaders() },
-        signal,
-      });
-      if (!r.ok) {
-        setCurrentPM(null);
-        return;
-      }
-      const d = await r.json();
-      const list = Array.isArray(d?.items) ? d.items : [];
+      const d = await apiFetch('/api/payment-method/mine');
+      const list = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
       const primary = list.find((x) => x.isDefault) || list[0] || null;
       setCurrentPM(primary);
-    } catch {
+    } catch (e) {
+      // If endpoint missing or returns non-OK, just treat as no payment method
+      console.warn('PaymentMethod: refreshPrimary failed:', e?.message || e);
       setCurrentPM(null);
+    }
+  }
+
+  // Try POST first; if backend only supports GET, retry GET on 405
+  async function createBankSetupIntent() {
+    try {
+      return await apiFetch('/api/stripe/create-bank-setup-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.includes('HTTP 405')) {
+        // retry as GET
+        return apiFetch('/api/stripe/create-bank-setup-intent');
+      }
+      throw e;
     }
   }
 
   async function startBankLink() {
     setLinking(true);
     setErrorMsg('');
+
     try {
-      const r = await fetch('/api/stripe/create-bank-setup-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      });
-      if (r.status === 401) {
-        setErrorMsg('Your session expired. Please log in again, then return here.');
-        return;
+      const data = await createBankSetupIntent();
+
+      // support different backend shapes
+      const secret =
+        data?.client_secret || data?.clientSecret || data?.setupIntentClientSecret;
+
+      if (!secret) {
+        throw new Error(
+          'Server did not return a SetupIntent client secret. Check your backend response.'
+        );
       }
-      if (!r.ok) throw new Error((await r.text()) || 'Failed to create SetupIntent.');
-      const { client_secret } = await r.json();
-      if (!client_secret) throw new Error('No client_secret returned from server.');
-      setClientSecret(client_secret);
+
+      setClientSecret(secret);
     } catch (e) {
-      setErrorMsg(e.message || 'Could not start bank link.');
+      console.error('startBankLink error:', e);
+      setErrorMsg(e?.message || 'Failed to create SetupIntent.');
     } finally {
       setLinking(false);
     }
@@ -180,6 +185,7 @@ export default function PaymentMethodPage() {
             <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>
               {hasPM ? currentPM?.brand || 'Bank account' : 'No bank account on file'}
             </div>
+
             <div style={{ fontSize: 13, color: '#475569', marginBottom: 6 }}>
               {hasPM
                 ? currentPM?.last4
@@ -187,6 +193,7 @@ export default function PaymentMethodPage() {
                   : '—'
                 : 'Link your bank to send and receive money on PeerFund.'}
             </div>
+
             {hasPM && (
               <small style={{ color: '#64748b' }}>
                 Used for <strong>both</strong> funding and payouts. Updating replaces your current
@@ -209,7 +216,13 @@ export default function PaymentMethodPage() {
               whiteSpace: 'nowrap',
             }}
           >
-            {hasPM ? (linking ? 'Starting…' : 'Update bank account') : linking ? 'Starting…' : 'Link bank account'}
+            {hasPM
+              ? linking
+                ? 'Starting…'
+                : 'Update bank account'
+              : linking
+              ? 'Starting…'
+              : 'Link bank account'}
           </button>
         </div>
 
@@ -232,9 +245,13 @@ export default function PaymentMethodPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Account holder full name"
-              style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8 }}
+              style={{
+                padding: '8px 10px',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+              }}
             />
-          
+
             <small style={{ color: '#6b7280' }}>
               We pass this to Stripe only to label your bank method.
             </small>
@@ -242,9 +259,9 @@ export default function PaymentMethodPage() {
         )}
       </section>
 
-      {/* Stripe bank link + SAVE to backend (makes it Default + Payout) */}
+      {/* Stripe bank link + SAVE to backend */}
       {clientSecret && stripePromise && (
-        <Elements stripe={stripePromise}>
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
           <BankLinkFlow
             clientSecret={clientSecret}
             fullName={fullName}
@@ -254,7 +271,7 @@ export default function PaymentMethodPage() {
               await refreshPrimary();
             }}
             onError={(msg) => {
-              setClientSecret(null); // hide the flow if user cancels/errors
+              setClientSecret(null);
               setErrorMsg(msg);
             }}
           />
@@ -271,23 +288,21 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
   const startedRef = useRef(false);
 
   async function saveToBackend(paymentMethodId) {
-    const r = await fetch('/api/payment-method/save', {
+    // prod-safe
+    await apiFetch('/api/payment-method/save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         paymentMethodId,
         makeDefault: true,
         useForLoans: true,
       }),
     });
-    if (!r.ok) {
-      const t = await r.text().catch(() => '');
-      throw new Error(t || 'Failed to save payment method to your PeerFund account.');
-    }
   }
 
   useEffect(() => {
     if (!stripe || !clientSecret || startedRef.current) return;
+
     if (!fullName) {
       onError?.('Please enter the account holder’s full name.');
       return;
@@ -297,7 +312,7 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
 
     (async () => {
       try {
-        // 1) Open Financial Connections immediately
+        // 1) Collect bank account for SetupIntent (opens Stripe modal)
         const { error: collectError } = await stripe.collectBankAccountForSetup({
           clientSecret,
           params: {
@@ -320,9 +335,9 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
         // 3) Persist as default + payout
         await saveToBackend(pmId);
 
-        // 4) Finish quietly; parent will refresh and show last4
         onSaved?.();
       } catch (e) {
+        console.error('BankLinkFlow error:', e);
         onError?.(e?.message || 'Failed to link bank account.');
       } finally {
         setWorking(false);
@@ -330,7 +345,6 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
     })();
   }, [stripe, clientSecret, fullName, email, onSaved, onError]);
 
-  // Minimal inline “working” hint while the Stripe modal opens/finishes.
   return (
     <div
       style={{
