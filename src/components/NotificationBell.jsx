@@ -15,22 +15,17 @@ const NotificationBell = () => {
     const fetchNotifications = async () => {
       try {
         const data = await apiFetch('/api/notifications');
-        const list = Array.isArray(data) ? data : [];
-
         if (cancelled) return;
+
+        const list = Array.isArray(data) ? data : [];
         setNotifications(list);
         setUnreadCount(list.filter((n) => !n.read).length);
       } catch (err) {
         console.error('🔔 Error loading notifications:', err);
-        if (!cancelled) {
-          setNotifications([]);
-          setUnreadCount(0);
-        }
       }
     };
 
     fetchNotifications();
-
     return () => {
       cancelled = true;
     };
@@ -42,7 +37,10 @@ const NotificationBell = () => {
 
   const markAllAsRead = async () => {
     try {
-      await apiFetch('/api/notifications/mark-all-read', { method: 'POST' });
+      await apiFetch('/api/notifications/mark-all-read', {
+        method: 'POST',
+      });
+
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (err) {
@@ -52,14 +50,10 @@ const NotificationBell = () => {
 
   const getIcon = (type) => {
     switch (type) {
-      case 'message':
-        return '💬';
-      case 'offer':
-        return '💰';
-      case 'contract':
-        return '📄';
-      default:
-        return '🔔';
+      case 'message': return '💬';
+      case 'offer': return '💰';
+      case 'contract': return '📄';
+      default: return '🔔';
     }
   };
 
@@ -73,38 +67,34 @@ const NotificationBell = () => {
       <button onClick={handleBellClick} style={{ fontSize: '1.25rem', position: 'relative' }}>
         🔔
         {unreadCount > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: '-6px',
-              right: '-6px',
-              backgroundColor: 'red',
-              color: 'white',
-              borderRadius: '50%',
-              padding: '2px 6px',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-            }}
-          >
+          <span style={{
+            position: 'absolute',
+            top: '-6px',
+            right: '-6px',
+            backgroundColor: 'red',
+            color: 'white',
+            borderRadius: '50%',
+            padding: '2px 6px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+          }}>
             {unreadCount}
           </span>
         )}
       </button>
 
       {showDropdown && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: '2.5rem',
-            background: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            width: '320px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-            zIndex: 1000,
-          }}
-        >
+        <div style={{
+          position: 'absolute',
+          right: 0,
+          top: '2.5rem',
+          background: '#fff',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          width: '320px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+          zIndex: 1000,
+        }}>
           <div style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
             <strong>Notifications</strong>
             <button onClick={markAllAsRead} style={{ float: 'right', fontSize: '0.75rem' }}>
@@ -124,10 +114,7 @@ const NotificationBell = () => {
                   borderBottom: '1px solid #eee',
                   cursor: 'pointer',
                 }}
-                onClick={() => {
-                  setShowDropdown(false);
-                  if (n.loanId) navigate(`/loan/${n.loanId}`);
-                }}
+                onClick={() => navigate(n.loanId ? `/loan/${n.loanId}` : '/dashboard')}
               >
                 <div>
                   <span style={{ marginRight: '0.5rem' }}>{getIcon(n.type)}</span>
