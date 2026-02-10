@@ -1,5 +1,5 @@
 // src/features/wallet/PaymentMethod.jsx
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe } from '@stripe/react-stripe-js';
@@ -36,7 +36,7 @@ export default function PaymentMethodPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
 
-  const stripePromise = useMemo(() => getStripePromise(), []);
+  const stripePromise = useMemo(getStripePromise, []);
 
   useEffect(() => {
     let alive = true;
@@ -46,7 +46,7 @@ export default function PaymentMethodPage() {
         setLoading(true);
         setErrorMsg('');
 
-        // Prefill name/email (prod-safe)
+        // Prefill name/email (uses apiFetch so it hits backend base URL)
         try {
           const u = await apiFetch('/api/users/profile');
           if (!alive) return;
@@ -58,6 +58,8 @@ export default function PaymentMethodPage() {
         }
 
         await refreshPrimary();
+      } catch (e) {
+        console.error('PaymentMethod init error:', e);
       } finally {
         if (alive) setLoading(false);
       }
@@ -72,30 +74,12 @@ export default function PaymentMethodPage() {
   async function refreshPrimary() {
     try {
       const d = await apiFetch('/api/payment-method/mine');
-      const list = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
+      const list = Array.isArray(d?.items) ? d.items : [];
       const primary = list.find((x) => x.isDefault) || list[0] || null;
       setCurrentPM(primary);
     } catch (e) {
-      // If endpoint missing or returns non-OK, just treat as no payment method
-      console.warn('PaymentMethod: refreshPrimary failed:', e?.message || e);
+      // if 404/empty, treat as no PM
       setCurrentPM(null);
-    }
-  }
-
-  // Try POST first; if backend only supports GET, retry GET on 405
-  async function createBankSetupIntent() {
-    try {
-      return await apiFetch('/api/stripe/create-bank-setup-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (e) {
-      const msg = String(e?.message || '');
-      if (msg.includes('HTTP 405')) {
-        // retry as GET
-        return apiFetch('/api/stripe/create-bank-setup-intent');
-      }
-      throw e;
     }
   }
 
@@ -104,22 +88,18 @@ export default function PaymentMethodPage() {
     setErrorMsg('');
 
     try {
-      const data = await createBankSetupIntent();
+      // IMPORTANT: use apiFetch so this goes to backend, not Vercel
+      const data = await apiFetch('/api/stripe/create-bank-setup-intent', {
+        method: 'POST',
+      });
 
-      // support different backend shapes
-      const secret =
-        data?.client_secret || data?.clientSecret || data?.setupIntentClientSecret;
+      const client_secret = data?.client_secret || data?.clientSecret || null;
+      if (!client_secret) throw new Error('No client_secret returned from server.');
 
-      if (!secret) {
-        throw new Error(
-          'Server did not return a SetupIntent client secret. Check your backend response.'
-        );
-      }
-
-      setClientSecret(secret);
+      setClientSecret(client_secret);
     } catch (e) {
-      console.error('startBankLink error:', e);
-      setErrorMsg(e?.message || 'Failed to create SetupIntent.');
+      const msg = e?.message || 'Failed to create SetupIntent.';
+      setErrorMsg(msg);
     } finally {
       setLinking(false);
     }
@@ -145,7 +125,7 @@ export default function PaymentMethodPage() {
           }}
         >
           Missing Stripe publishable key. Add{' '}
-          <code>REACT_APP_STRIPE_PUBLISHABLE_KEY</code> to your <code>.env</code>.
+          <code>REACT_APP_STRIPE_PUBLISHABLE_KEY</code> to your frontend env.
         </div>
       )}
 
@@ -185,7 +165,6 @@ export default function PaymentMethodPage() {
             <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>
               {hasPM ? currentPM?.brand || 'Bank account' : 'No bank account on file'}
             </div>
-
             <div style={{ fontSize: 13, color: '#475569', marginBottom: 6 }}>
               {hasPM
                 ? currentPM?.last4
@@ -193,7 +172,6 @@ export default function PaymentMethodPage() {
                   : '—'
                 : 'Link your bank to send and receive money on PeerFund.'}
             </div>
-
             {hasPM && (
               <small style={{ color: '#64748b' }}>
                 Used for <strong>both</strong> funding and payouts. Updating replaces your current
@@ -245,11 +223,7 @@ export default function PaymentMethodPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Account holder full name"
-              style={{
-                padding: '8px 10px',
-                border: '1px solid #e2e8f0',
-                borderRadius: 8,
-              }}
+              style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8 }}
             />
 
             <small style={{ color: '#6b7280' }}>
@@ -261,7 +235,7 @@ export default function PaymentMethodPage() {
 
       {/* Stripe bank link + SAVE to backend */}
       {clientSecret && stripePromise && (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <Elements stripe={stripePromise}>
           <BankLinkFlow
             clientSecret={clientSecret}
             fullName={fullName}
@@ -288,7 +262,7 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
   const startedRef = useRef(false);
 
   async function saveToBackend(paymentMethodId) {
-    // prod-safe
+    // IMPORTANT: use apiFetch so it hits backend base URL
     await apiFetch('/api/payment-method/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -312,7 +286,7 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
 
     (async () => {
       try {
-        // 1) Collect bank account for SetupIntent (opens Stripe modal)
+        // 1) Open Financial Connections
         const { error: collectError } = await stripe.collectBankAccountForSetup({
           clientSecret,
           params: {
@@ -324,7 +298,7 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
         });
         if (collectError) throw collectError;
 
-        // 2) Confirm the SetupIntent
+        // 2) Confirm SetupIntent
         const { setupIntent, error: confirmError } =
           await stripe.confirmUsBankAccountSetup(clientSecret);
         if (confirmError) throw confirmError;
@@ -332,12 +306,11 @@ function BankLinkFlow({ clientSecret, fullName, email, onSaved, onError }) {
         const pmId = setupIntent?.payment_method;
         if (!pmId) throw new Error('Missing payment method id from Stripe.');
 
-        // 3) Persist as default + payout
+        // 3) Persist
         await saveToBackend(pmId);
 
         onSaved?.();
       } catch (e) {
-        console.error('BankLinkFlow error:', e);
         onError?.(e?.message || 'Failed to link bank account.');
       } finally {
         setWorking(false);
