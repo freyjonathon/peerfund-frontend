@@ -54,7 +54,12 @@ const Login = () => {
 
       const text = await res.text();
       let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch (_) {}
+      try {
+      data = text ? JSON.parse(text) : null;
+      } catch (parseError) {
+      console.warn('Login response was not valid JSON.', parseError);
+      }
+
 
       if (!res.ok || !data?.token) {
         setErr(data?.error || data?.message || 'Login failed');
