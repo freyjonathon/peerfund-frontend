@@ -3,16 +3,15 @@ import React, { useEffect, useState } from 'react';
 
 const TopLenders = () => {
   const [lenders, setLenders] = useState(null); // null initially
-  const [sortBy, setSortBy] = useState('amount'); // 'amount' or 'count'
-  const token = localStorage.getItem('token');
+  const [sortBy] = useState('amount'); // keep default, no setter until UI exists
 
   useEffect(() => {
     const fetchTopLenders = async () => {
       try {
+        const token = localStorage.getItem('token');
+
         const res = await fetch(`/api/leaderboard/top-lenders?sort=${sortBy}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
         if (!res.ok) {
@@ -23,7 +22,9 @@ const TopLenders = () => {
         const data = await res.json();
 
         if (!Array.isArray(data)) {
-          throw new Error('Expected an array from API, got: ' + JSON.stringify(data));
+          throw new Error(
+            'Expected an array from API, got: ' + JSON.stringify(data)
+          );
         }
 
         setLenders(data);
@@ -39,8 +40,6 @@ const TopLenders = () => {
   return (
     <div className="top-lenders-section">
       <h3 className="subheading">🏆 Top 10 Lenders</h3>
-      <div style={{ marginBottom: '1rem' }}>
-      </div>
 
       {!Array.isArray(lenders) ? (
         <p>Loading leaderboard...</p>
@@ -61,7 +60,7 @@ const TopLenders = () => {
               <tr key={lender.userId || i}>
                 <td>{i + 1}</td>
                 <td>{lender.name || 'Anonymous'}</td>
-                <td>${lender.totalAmount.toFixed(2)}</td>
+                <td>${Number(lender.totalAmount || 0).toFixed(2)}</td>
                 <td>{lender.totalLoans}</td>
               </tr>
             ))}

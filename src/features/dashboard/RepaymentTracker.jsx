@@ -1,34 +1,31 @@
 // src/components/RepaymentTracker.jsx
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-
+import { useParams } from 'react-router-dom';
 
 const RepaymentTracker = () => {
   const { loanId } = useParams();
   const [repayments, setRepayments] = useState([]);
 
-  const token = localStorage.getItem('token');
-
   useEffect(() => {
     const fetchRepayments = async () => {
       try {
+        const token = localStorage.getItem('token');
+
         const res = await fetch(`/api/loans/${loanId}/repayments`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
         if (!res.ok) throw new Error('Failed to fetch repayments');
 
         const data = await res.json();
-        setRepayments(data);
+        setRepayments(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching repayments:', err);
       }
     };
 
-    fetchRepayments();
-  }, [loanId, token]);
+    if (loanId) fetchRepayments();
+  }, [loanId]);
 
   return (
     <div style={{ padding: '2rem' }}>
@@ -50,8 +47,8 @@ const RepaymentTracker = () => {
             {repayments.map((repayment) => (
               <tr key={repayment.id}>
                 <td>{new Date(repayment.dueDate).toLocaleDateString()}</td>
-                <td>${repayment.amount.toFixed(2)}</td>
-                <td>${repayment.amountPaid.toFixed(2)}</td>
+                <td>${Number(repayment.amount || 0).toFixed(2)}</td>
+                <td>${Number(repayment.amountPaid || 0).toFixed(2)}</td>
                 <td>{repayment.status}</td>
                 <td>
                   {repayment.paidAt
