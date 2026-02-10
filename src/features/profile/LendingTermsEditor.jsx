@@ -1,6 +1,7 @@
 // src/features/profile/LendingTermsEditor.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import './LendingTermsEditor.css';
+import { apiFetch } from '../../utils/api';
 
 function clampRate(v) {
   const n = Number(v);
@@ -13,8 +14,8 @@ function clampRate(v) {
 function clampAmount(v) {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  // whole dollars
-  return Math.round(n * 100) / 100;
+  // Whole dollars (still allows typing; we store numeric)
+  return Math.round(n);
 }
 
 function uid() {
@@ -33,15 +34,15 @@ export default function LendingTermsEditor() {
   // Load existing terms -> rows
   useEffect(() => {
     let alive = true;
+
     (async () => {
       try {
         setLoading(true);
         setErr('');
-        const r = await fetch('/api/users/me/lending-terms', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-        if (!r.ok) throw new Error(await r.text());
-        const d = await r.json();
+        setOk('');
+
+        // ✅ production-safe (base URL + token + JSON guard)
+        const d = await apiFetch('/api/users/me/lending-terms');
 
         const map = d?.lendingTerms || {};
         const parsed = Object.entries(map).map(([k, v]) => ({
@@ -54,12 +55,13 @@ export default function LendingTermsEditor() {
         parsed.sort((a, b) => a.amount - b.amount);
         if (alive) setRows(parsed);
       } catch (e) {
-        console.error(e);
-        if (alive) setErr('Failed to load lending terms.');
+        console.error('LendingTermsEditor load error:', e);
+        if (alive) setErr(e?.message || 'Failed to load lending terms.');
       } finally {
         if (alive) setLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
@@ -72,41 +74,39 @@ export default function LendingTermsEditor() {
       const key = String(r.amount);
       seen.set(key, (seen.get(key) || 0) + 1);
     }
-    return new Set(
-      [...seen.entries()]
-        .filter(([, c]) => c > 1)
-        .map(([k]) => k)
-    );
+    return new Set([...seen.entries()].filter(([, c]) => c > 1).map(([k]) => k));
   }, [rows]);
 
   function addRow() {
-    setRows((rs) => [
-      ...rs,
-      { id: uid(), amount: 50, enabled: true, rate: 10 },
-    ]);
+    setErr('');
+    setOk('');
+    setRows((rs) => [...rs, { id: uid(), amount: 50, enabled: true, rate: 10 }]);
   }
 
   function removeRow(id) {
+    setErr('');
+    setOk('');
     setRows((rs) => rs.filter((r) => r.id !== id));
   }
 
   function updateRow(id, patch) {
+    setErr('');
+    setOk('');
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
   async function save() {
+    setErr('');
+    setOk('');
+
     // validation
-    const badAmount = rows.find(
-      (r) => !Number.isFinite(r.amount) || r.amount <= 0
-    );
+    const badAmount = rows.find((r) => !Number.isFinite(r.amount) || r.amount <= 0);
     if (badAmount) {
       setErr('Amounts must be positive numbers.');
-      setOk('');
       return;
     }
     if (dupAmounts.size > 0) {
       setErr('Duplicate amounts detected. Each tier must be unique.');
-      setOk('');
       return;
     }
 
@@ -123,21 +123,18 @@ export default function LendingTermsEditor() {
 
     try {
       setSaving(true);
-      setErr('');
-      setOk('');
-      const r = await fetch('/api/users/me/lending-terms', {
+
+      // ✅ production-safe save
+      await apiFetch('/api/users/me/lending-terms', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lendingTerms: map }),
       });
-      if (!r.ok) throw new Error(await r.text());
+
       setOk('Lending terms saved.');
     } catch (e) {
-      console.error(e);
-      setErr('Failed to save lending terms.');
+      console.error('LendingTermsEditor save error:', e);
+      setErr(e?.message || 'Failed to save lending terms.');
     } finally {
       setSaving(false);
     }
@@ -172,7 +169,6 @@ export default function LendingTermsEditor() {
           const isDup = dupAmounts.has(String(r.amount));
           return (
             <div className="lt-row" key={r.id}>
-              {/* pill toggle instead of naked checkbox */}
               <button
                 type="button"
                 className={`lt-toggle-pill ${
@@ -184,7 +180,6 @@ export default function LendingTermsEditor() {
               </button>
 
               <div className="lt-row-fields">
-                {/* Amount */}
                 <div className="lt-field">
                   <label className="lt-field-label">Amount</label>
                   <div className="lt-input-shell lt-input-shell--prefix">
@@ -193,24 +188,17 @@ export default function LendingTermsEditor() {
                       type="number"
                       min="1"
                       step="1"
-                      value={Number.isFinite(r.amount) ? r.amount : ''}
+                      value={Number.isFinite(r.amount) && r.amount > 0 ? r.amount : ''}
                       onChange={(e) =>
-                        updateRow(r.id, {
-                          amount: clampAmount(e.target.value),
-                        })
+                        updateRow(r.id, { amount: clampAmount(e.target.value) })
                       }
-                      className={
-                        isDup ? 'lt-input lt-input--error' : 'lt-input'
-                      }
-                      placeholder="e.g. 1,000"
+                      className={isDup ? 'lt-input lt-input--error' : 'lt-input'}
+                      placeholder="e.g. 1000"
                     />
                   </div>
-                  {isDup && (
-                    <div className="lt-hint-error">Duplicate amount</div>
-                  )}
+                  {isDup && <div className="lt-hint-error">Duplicate amount</div>}
                 </div>
 
-                {/* APR */}
                 <div className="lt-field">
                   <label className="lt-field-label">APR</label>
                   <div className="lt-input-shell lt-input-shell--suffix">
@@ -219,7 +207,7 @@ export default function LendingTermsEditor() {
                       min="0"
                       max="100"
                       step="0.25"
-                      value={r.rate}
+                      value={Number.isFinite(r.rate) ? r.rate : 0}
                       onChange={(e) =>
                         updateRow(r.id, { rate: clampRate(e.target.value) })
                       }
@@ -246,11 +234,7 @@ export default function LendingTermsEditor() {
       </div>
 
       <footer className="lt-footer">
-        <button
-          type="button"
-          className="btn btn--soft btn--lg"
-          onClick={addRow}
-        >
+        <button type="button" className="btn btn--soft btn--lg" onClick={addRow}>
           + Add Tier
         </button>
         <button
