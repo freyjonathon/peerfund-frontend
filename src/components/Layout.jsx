@@ -10,25 +10,44 @@ const Layout = () => {
   const [userLoading, setUserLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     const token = localStorage.getItem('token');
     if (!token) {
       setUserLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     const loadProfile = async () => {
       try {
         const data = await apiFetch('/api/users/profile');
-        setUser(data);
+        if (!cancelled) setUser(data);
       } catch (err) {
         console.error('Layout: failed to load user profile', err);
-        setUser(null);
+
+        // If token is invalid/expired, stop the cascade of errors on every page
+        const msg = String(err?.message || '');
+        if (msg.includes('HTTP 401') || msg.includes('HTTP 403')) {
+          try {
+            localStorage.removeItem('token');
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!cancelled) setUser(null);
       } finally {
-        setUserLoading(false);
+        if (!cancelled) setUserLoading(false);
       }
     };
 
     loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

@@ -1,40 +1,33 @@
 // src/components/TopLenders.jsx
 import React, { useEffect, useState } from 'react';
+import { apiFetch } from '../utils/api';
 
 const TopLenders = () => {
   const [lenders, setLenders] = useState(null); // null initially
   const [sortBy] = useState('amount'); // keep default, no setter until UI exists
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchTopLenders = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const data = await apiFetch(`/api/leaderboard/top-lenders?sort=${encodeURIComponent(sortBy)}`);
 
-        const res = await fetch(`/api/leaderboard/top-lenders?sort=${sortBy}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        // backend may return { items: [...] } or [...] — support both
+        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`Server error ${res.status}: ${errorText}`);
-        }
-
-        const data = await res.json();
-
-        if (!Array.isArray(data)) {
-          throw new Error(
-            'Expected an array from API, got: ' + JSON.stringify(data)
-          );
-        }
-
-        setLenders(data);
+        if (!cancelled) setLenders(list);
       } catch (err) {
-        console.error('Error fetching top lenders:', err.message);
-        setLenders([]); // Prevent crash if fetch fails
+        console.error('Error fetching top lenders:', err);
+        if (!cancelled) setLenders([]); // Prevent crash if fetch fails
       }
     };
 
     fetchTopLenders();
+
+    return () => {
+      cancelled = true;
+    };
   }, [sortBy]);
 
   return (
@@ -57,11 +50,11 @@ const TopLenders = () => {
           </thead>
           <tbody>
             {lenders.map((lender, i) => (
-              <tr key={lender.userId || i}>
+              <tr key={lender.userId || lender.id || i}>
                 <td>{i + 1}</td>
                 <td>{lender.name || 'Anonymous'}</td>
                 <td>${Number(lender.totalAmount || 0).toFixed(2)}</td>
-                <td>{lender.totalLoans}</td>
+                <td>{Number(lender.totalLoans || 0)}</td>
               </tr>
             ))}
           </tbody>
