@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiFetch } from '../utils/api';
+import { apiFetch } from '../../utils/api';
 
 export default function WalletBadge() {
   const [cents, setCents] = useState(0);
