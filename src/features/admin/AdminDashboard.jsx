@@ -1,12 +1,34 @@
 // src/features/admin/AdminDashboard.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './AdminDashboard.css'; // optional – you can remove this line if you don't want custom styles
+import './AdminDashboard.css';
+
+const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, ''); // set this in Vercel
+
+async function safeJson(res) {
+  const contentType = res.headers.get('content-type') || '';
+  const text = await res.text();
+
+  // Helpful error detail even when backend returns HTML
+  if (!res.ok) {
+    throw new Error(
+      `HTTP ${res.status} ${res.statusText}: ${text.slice(0, 200)}`
+    );
+  }
+
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      `Expected JSON but got "${contentType || 'unknown'}". Response starts with: ${text.slice(0, 120)}`
+    );
+  }
+
+  return JSON.parse(text);
+}
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'verifications' | 'transactions'
+  const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -17,7 +39,12 @@ const AdminDashboard = () => {
   const token =
     typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeaders = useMemo(
+    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    [token]
+  );
+
+  const apiUrl = (path) => `${API_BASE}${path}`; // if API_BASE is empty, it stays relative
 
   /* ------------------------ Loaders ------------------------ */
 
@@ -25,9 +52,12 @@ const AdminDashboard = () => {
     try {
       setError('');
       setLoading(true);
-      const res = await fetch('/api/admin/users', { headers: authHeaders });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+
+      const res = await fetch(apiUrl('/api/admin/users'), {
+        headers: authHeaders,
+      });
+
+      const data = await safeJson(res);
       setUsers(Array.isArray(data) ? data : data.users || []);
     } catch (e) {
       console.error('loadUsers error:', e);
@@ -41,11 +71,12 @@ const AdminDashboard = () => {
     try {
       setError('');
       setLoading(true);
-      const res = await fetch('/api/admin/verification/pending', {
+
+      const res = await fetch(apiUrl('/api/admin/verification/pending'), {
         headers: authHeaders,
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+
+      const data = await safeJson(res);
       setPendingVerifications(Array.isArray(data) ? data : data.items || []);
     } catch (e) {
       console.error('loadPendingVerifications error:', e);
@@ -59,11 +90,12 @@ const AdminDashboard = () => {
     try {
       setError('');
       setLoading(true);
-      const res = await fetch('/api/admin/transactions', {
+
+      const res = await fetch(apiUrl('/api/admin/transactions'), {
         headers: authHeaders,
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+
+      const data = await safeJson(res);
       setTransactions(Array.isArray(data) ? data : data.transactions || []);
     } catch (e) {
       console.error('loadTransactions error:', e);
@@ -75,10 +107,8 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!token) return;
-    // Load a bit of everything on first visit
     loadUsers();
     loadPendingVerifications();
-    // loadTransactions(); // uncomment when your admin transactions endpoint is ready
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -90,21 +120,22 @@ const AdminDashboard = () => {
     try {
       setError('');
       setLoading(true);
-      const res = await fetch(`/api/admin/verification/${userId}/approve`, {
+
+      const res = await fetch(apiUrl(`/api/admin/verification/${userId}/approve`), {
         method: 'POST',
         headers: {
           ...authHeaders,
           'Content-Type': 'application/json',
         },
       });
-      if (!res.ok) throw new Error(await res.text());
-      await res.json().catch(() => ({}));
 
-      // Remove from pending list and refresh users
+      // don’t assume JSON here; safeJson will handle it
+      await safeJson(res).catch(() => ({}));
+
       setPendingVerifications((prev) =>
         prev.filter((v) => v.userId !== userId && v.id !== userId)
       );
-      loadUsers();
+      await loadUsers();
     } catch (e) {
       console.error('handleApprove error:', e);
       setError(e.message || 'Failed to approve user');
@@ -119,20 +150,21 @@ const AdminDashboard = () => {
     try {
       setError('');
       setLoading(true);
-      const res = await fetch(`/api/admin/verification/${userId}/reject`, {
+
+      const res = await fetch(apiUrl(`/api/admin/verification/${userId}/reject`), {
         method: 'POST',
         headers: {
           ...authHeaders,
           'Content-Type': 'application/json',
         },
       });
-      if (!res.ok) throw new Error(await res.text());
-      await res.json().catch(() => ({}));
+
+      await safeJson(res).catch(() => ({}));
 
       setPendingVerifications((prev) =>
         prev.filter((v) => v.userId !== userId && v.id !== userId)
       );
-      loadUsers();
+      await loadUsers();
     } catch (e) {
       console.error('handleReject error:', e);
       setError(e.message || 'Failed to reject user');
@@ -147,8 +179,7 @@ const AdminDashboard = () => {
     <div className="admin-card">
       <h2>All users</h2>
       <p style={{ marginBottom: 12, color: '#64748b' }}>
-        Quick overview of users, roles, SuperUser status, and verification
-        status.
+        Quick overview of users, roles, SuperUser status, and verification status.
       </p>
       <div className="admin-table-wrapper">
         <table className="admin-table">
@@ -172,11 +203,7 @@ const AdminDashboard = () => {
             ) : (
               users.map((u) => (
                 <tr key={u.id}>
-                  <td>
-                    {u.createdAt
-                      ? new Date(u.createdAt).toLocaleString()
-                      : '—'}
-                  </td>
+                  <td>{u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</td>
                   <td>{u.name || '—'}</td>
                   <td>{u.email}</td>
                   <td>{u.role}</td>
@@ -224,16 +251,13 @@ const AdminDashboard = () => {
                 const userId = item.userId || item.id;
                 const name = item.name || item.userName || '—';
                 const email = item.email || item.userEmail || '—';
-                const status =
-                  item.verificationStatus || item.status || 'PENDING';
+                const status = item.verificationStatus || item.status || 'PENDING';
 
                 return (
                   <tr key={userId}>
                     <td>
                       {item.submittedAt || item.createdAt
-                        ? new Date(
-                            item.submittedAt || item.createdAt
-                          ).toLocaleString()
+                        ? new Date(item.submittedAt || item.createdAt).toLocaleString()
                         : '—'}
                     </td>
                     <td>{name}</td>
@@ -246,19 +270,13 @@ const AdminDashboard = () => {
                       <button
                         className="admin-btn admin-btn--ghost"
                         type="button"
-                        onClick={() =>
-                          navigate(`/admin/verification/${userId}`)
-                        }
+                        onClick={() => navigate(`/admin/verification/${userId}`)}
                       >
                         View
                       </button>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="admin-btn"
-                        type="button"
-                        onClick={() => handleApprove(userId)}
-                      >
+                      <button className="admin-btn" type="button" onClick={() => handleApprove(userId)}>
                         Approve
                       </button>
                       <button
@@ -284,8 +302,7 @@ const AdminDashboard = () => {
     <div className="admin-card">
       <h2>Platform transactions</h2>
       <p style={{ marginBottom: 12, color: '#64748b' }}>
-        High-level view of PeerFund fees, bank fees, and SuperUser
-        subscriptions.
+        High-level view of PeerFund fees, bank fees, and SuperUser subscriptions.
       </p>
       <div className="admin-table-wrapper">
         <table className="admin-table">
@@ -308,11 +325,7 @@ const AdminDashboard = () => {
             ) : (
               transactions.map((t) => (
                 <tr key={t.id}>
-                  <td>
-                    {t.timestamp
-                      ? new Date(t.timestamp).toLocaleString()
-                      : '—'}
-                  </td>
+                  <td>{t.timestamp ? new Date(t.timestamp).toLocaleString() : '—'}</td>
                   <td>{t.type}</td>
                   <td>${Number(t.amount || 0).toFixed(2)}</td>
                   <td>{t.fromUser?.name || '—'}</td>
@@ -331,24 +344,13 @@ const AdminDashboard = () => {
   return (
     <div className="admin-shell">
       <header className="admin-header">
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div>
             <h1>Admin dashboard</h1>
             <p>Monitor PeerFund activity and review user verifications.</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="admin-btn"
-          >
+          <button type="button" onClick={() => navigate('/dashboard')} className="admin-btn">
             ← Back to app
           </button>
         </div>
@@ -363,23 +365,17 @@ const AdminDashboard = () => {
           Users
         </button>
         <button
-          className={`admin-tab ${
-            activeTab === 'verifications' ? 'is-active' : ''
-          }`}
+          className={`admin-tab ${activeTab === 'verifications' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('verifications')}
           type="button"
         >
           Verifications
         </button>
         <button
-          className={`admin-tab ${
-            activeTab === 'transactions' ? 'is-active' : ''
-          }`}
+          className={`admin-tab ${activeTab === 'transactions' ? 'is-active' : ''}`}
           onClick={() => {
             setActiveTab('transactions');
-            if (transactions.length === 0) {
-              loadTransactions();
-            }
+            if (transactions.length === 0) loadTransactions();
           }}
           type="button"
         >
