@@ -1,13 +1,7 @@
-// src/features/repayments/RepaymentButton.jsx
+// src/features/loans/RepaymentButton.jsx
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import axios from 'axios';
-
-function getAuthHeader() {
-  let t = localStorage.getItem('token') || '';
-  t = t.replace(/^"|"$/g, '');
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
+import { apiFetch } from '../../utils/api';
 
 /**
  * Props:
@@ -22,34 +16,31 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
   const [okMsg, setOkMsg] = useState('');
 
   const displayAmount =
-    typeof amount === 'number' && Number.isFinite(amount) ? `$${amount.toFixed(2)}` : null;
+    typeof amount === 'number' && Number.isFinite(amount)
+      ? `$${amount.toFixed(2)}`
+      : null;
 
   const handlePay = async () => {
+    if (!loanId) return;
+
     setLoading(true);
     setErrorMsg('');
     setOkMsg('');
 
     try {
-      await axios.post(
-        `/api/loans/${loanId}/pay-next`,
-        { source }, // 👈 send selected source
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeader(),
-          },
-          withCredentials: true,
-        }
-      );
+      await apiFetch(`/api/loans/${loanId}/pay-next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source }), // wallet | bank
+      });
 
       setOkMsg('Payment submitted successfully.');
       if (typeof onPaid === 'function') {
         await onPaid();
       }
     } catch (err) {
-      console.error('payNextInstallment error', err);
-      const msg = err?.response?.data?.error || err?.message || 'Payment failed';
-      setErrorMsg(msg);
+      console.error('pay-next error:', err);
+      setErrorMsg(err?.message || 'Payment failed');
     } finally {
       setLoading(false);
     }
