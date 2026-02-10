@@ -1,82 +1,34 @@
 // src/features/wallet/walletApi.js
-function authHeaders() {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { apiFetch } from '../../utils/api';
 
+/**
+ * GET /api/wallet/me
+ * Returns: { availableCents, pendingCents, ... }
+ */
 export async function fetchWallet() {
-  const res = await fetch('/api/wallet/me', {
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || 'Failed to fetch wallet');
-  }
-  return res.json();
+  return apiFetch('/api/wallet/me');
 }
 
-export async function createDepositIntent({ amountDollars }) {
-  const res = await fetch('/api/wallet/deposit-intent', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
-    body: JSON.stringify({ amountDollars }),
-  });
-
-  const text = await res.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } 
-  catch (err) {
-  // ignore / non-fatal
-}
-
-  if (!res.ok) {
-    throw new Error(data.error || text || 'Failed to create deposit');
-  }
-
-  return data; // { clientSecret, simulated } or { simulated, available... }
-}
-
+/**
+ * POST /api/wallet/deposit
+ * Body: { amountDollars }
+ */
 export async function createDeposit({ amountDollars }) {
-  const token = localStorage.getItem('token');
-  const res = await fetch('/api/wallet/deposit', {
+  return apiFetch('/api/wallet/deposit', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ amountDollars }),
   });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.ok === false) {
-    throw new Error(data.error || 'Failed to create deposit');
-  }
-  return data; // { ok: true, availableCents, pendingCents }
 }
 
-// src/features/wallet/walletApi.js
-import axios from 'axios';
-
+/**
+ * POST /api/wallet/withdraw
+ * Body: { amountDollars }
+ */
 export async function withdrawFromWallet({ amountDollars }) {
-  const token = localStorage.getItem('token');
-
-  const res = await axios.post(
-    '/api/wallet/withdraw',
-    { amountDollars },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  return res.data;
+  return apiFetch('/api/wallet/withdraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amountDollars }),
+  });
 }

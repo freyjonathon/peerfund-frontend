@@ -1,12 +1,12 @@
 // src/features/wallet/WalletPage.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import WalletPanel from './WalletPanel';
-import { fetchWallet } from './walletApi';
+import { fetchWallet, withdrawFromWallet } from './walletApi';
 import SaveFundingCard from './SaveFundingCard';
 
 /**
  * Simple withdraw modal.
- * Assumes backend route: POST /api/wallet/withdraw
+ * Backend route: POST /api/wallet/withdraw
  * Body: { amountDollars }
  */
 function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
@@ -14,14 +14,18 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const raw = (amount || '').replace(/[^0-9.]/g, '');
-  const numeric = Number(raw || 0);
-  const clamped = Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+  const { clamped, exceedsBalance, canSubmit } = useMemo(() => {
+    const raw = (amount || '').replace(/[^0-9.]/g, '');
+    const numeric = Number(raw || 0);
+    const clampedVal = Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
 
-  const exceedsBalance =
-    typeof maxDollars === 'number' && clamped > maxDollars + 1e-6;
+    const exceeds =
+      typeof maxDollars === 'number' && clampedVal > maxDollars + 1e-6;
 
-  const canSubmit = !busy && clamped > 0 && !exceedsBalance;
+    const can = !busy && clampedVal > 0 && !exceeds;
+
+    return { clamped: clampedVal, exceedsBalance: exceeds, canSubmit: can };
+  }, [amount, busy, maxDollars]);
 
   async function withdraw() {
     if (!canSubmit) return;
@@ -30,31 +34,13 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       setBusy(true);
       setError('');
 
-      const res = await fetch('/api/wallet/withdraw', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ amountDollars: clamped }),
-      });
+      await withdrawFromWallet({ amountDollars: clamped });
 
-      if (!res.ok) {
-        let msg = 'Failed to withdraw funds';
-        try {
-          const data = await res.json();
-          if (data?.error) msg = data.error;
-        } catch {
-          // ignore JSON parse errors
-        }
-        throw new Error(msg);
-      }
-
-      // Let parent refresh wallet & close modal
+      // Parent will refresh wallet + close the modal
       await onBalanceUpdated?.();
     } catch (e) {
       console.error('Withdraw failed:', e);
-      setError(e.message || 'Failed to withdraw funds');
+      setError(e?.message || 'Failed to withdraw funds');
     } finally {
       setBusy(false);
     }
@@ -87,6 +73,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
 
       <div className="row" style={{ marginTop: 12 }}>
         <label>Amount</label>
+
         <div className="input-wrap" style={{ display: 'flex', gap: 4 }}>
           <span
             style={{
@@ -99,6 +86,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
           >
             $
           </span>
+
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -112,14 +100,9 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
             }}
           />
         </div>
+
         {exceedsBalance && (
-          <div
-            style={{
-              marginTop: 6,
-              fontSize: 12,
-              color: '#b91c1c',
-            }}
-          >
+          <div style={{ marginTop: 6, fontSize: 12, color: '#b91c1c' }}>
             Amount exceeds your available balance.
           </div>
         )}
@@ -134,6 +117,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
         >
           Cancel
         </button>
+
         <button
           className="btn primary"
           onClick={withdraw}
@@ -158,17 +142,20 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
 export default function WalletPage() {
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const [showDepositPanel, setShowDepositPanel] = useState(false);
   const [showWithdrawPanel, setShowWithdrawPanel] = useState(false);
+
   const [error, setError] = useState('');
 
   async function loadWallet() {
     try {
       setError('');
       const w = await fetchWallet();
-      setWallet(w);
+      setWallet(w || null);
     } catch (e) {
       console.error('loadWallet error', e);
+      setWallet(null);
       setError(e?.message || 'Failed to load wallet.');
     } finally {
       setLoading(false);
@@ -176,13 +163,24 @@ export default function WalletPage() {
   }
 
   useEffect(() => {
-    loadWallet();
+    let cancelled = false;
+
+    (async () => {
+      await loadWallet();
+      if (cancelled) return;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const availableCents = wallet?.availableCents ?? 0;
   const pendingCents = wallet?.pendingCents ?? 0;
+
   const availableFloat = availableCents / 100;
-  const availableDollars = availableFloat.toFixed(2);
+  const availableDollars = (availableCents / 100).toFixed(2);
   const pendingDollars = (pendingCents / 100).toFixed(2);
 
   const anyModalOpen = showDepositPanel || showWithdrawPanel;
@@ -224,9 +222,11 @@ export default function WalletPage() {
             <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
               PeerFund balance
             </div>
+
             <div style={{ fontSize: 24, fontWeight: 700 }}>
               ${availableDollars}
             </div>
+
             <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
               Pending: ${pendingDollars}
             </div>
@@ -247,6 +247,7 @@ export default function WalletPage() {
               >
                 Add funds
               </button>
+
               <button
                 style={{
                   flex: 1,
@@ -256,8 +257,7 @@ export default function WalletPage() {
                   background: '#0f172a',
                   color: '#fff',
                   fontWeight: 700,
-                  cursor:
-                    availableFloat > 0 ? 'pointer' : 'not-allowed',
+                  cursor: availableFloat > 0 ? 'pointer' : 'not-allowed',
                   opacity: availableFloat > 0 ? 1 : 0.6,
                 }}
                 disabled={availableFloat <= 0}
@@ -284,8 +284,8 @@ export default function WalletPage() {
                 Funding card
               </div>
               <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                This card is used when you deposit to your PeerFund wallet,
-                repay loans, or pay the SuperUser fee.
+                This card is used when you deposit to your PeerFund wallet, repay
+                loans, or pay the SuperUser fee.
               </p>
 
               <SaveFundingCard />
@@ -304,6 +304,7 @@ export default function WalletPage() {
                 justifyContent: 'center',
                 zIndex: 50,
               }}
+              onClick={() => setShowDepositPanel(false)}
             >
               <div
                 style={{
@@ -314,11 +315,13 @@ export default function WalletPage() {
                   maxWidth: 420,
                   boxShadow: '0 20px 40px rgba(15,23,42,0.25)',
                 }}
+                onClick={(e) => e.stopPropagation()}
               >
                 <WalletPanel
                   onClose={() => setShowDepositPanel(false)}
                   onBalanceUpdated={async () => {
                     setShowDepositPanel(false);
+                    setLoading(true);
                     await loadWallet();
                   }}
                 />
@@ -338,6 +341,7 @@ export default function WalletPage() {
                 justifyContent: 'center',
                 zIndex: 50,
               }}
+              onClick={() => setShowWithdrawPanel(false)}
             >
               <div
                 style={{
@@ -348,12 +352,14 @@ export default function WalletPage() {
                   maxWidth: 420,
                   boxShadow: '0 20px 40px rgba(15,23,42,0.25)',
                 }}
+                onClick={(e) => e.stopPropagation()}
               >
                 <WithdrawPanel
                   maxDollars={availableFloat}
                   onClose={() => setShowWithdrawPanel(false)}
                   onBalanceUpdated={async () => {
                     setShowWithdrawPanel(false);
+                    setLoading(true);
                     await loadWallet();
                   }}
                 />
