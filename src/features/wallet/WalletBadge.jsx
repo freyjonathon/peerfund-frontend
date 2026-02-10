@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchWallet } from './walletApi';
+import { apiFetch } from '../utils/api';
 
 export default function WalletBadge() {
   const [cents, setCents] = useState(0);
@@ -8,8 +8,8 @@ export default function WalletBadge() {
   const refreshBalance = async () => {
     try {
       setLoading(true);
-      const w = await fetchWallet();
-      setCents(w.availableCents || 0);
+      const w = await apiFetch('/api/wallet');
+      setCents(Number(w?.availableCents || 0));
     } catch (err) {
       console.warn('Failed to refresh wallet', err);
     } finally {
@@ -19,7 +19,22 @@ export default function WalletBadge() {
 
   // Initial load
   useEffect(() => {
-    refreshBalance();
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const w = await apiFetch('/api/wallet');
+        if (!cancelled) setCents(Number(w?.availableCents || 0));
+      } catch (err) {
+        console.warn('Failed to refresh wallet', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const dollars = (cents / 100).toLocaleString(undefined, {
@@ -28,11 +43,9 @@ export default function WalletBadge() {
   });
 
   return (
-    <button className="balance-pill" onClick={refreshBalance}>
+    <button className="balance-pill" onClick={refreshBalance} type="button">
       <span className="pill-label">Balance</span>
-      <span className="pill-amount">
-        {loading ? ' ...' : dollars}
-      </span>
+      <span className="pill-amount">{loading ? ' ...' : dollars}</span>
     </button>
   );
 }

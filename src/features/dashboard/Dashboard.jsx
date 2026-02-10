@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopLenders from '../../components/TopLenders';
 import UserProfileCard from '../../components/UserProfileCard';
+import { apiFetch } from '../../utils/api';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -25,7 +26,7 @@ const Dashboard = () => {
   const supBtnRef = useRef(null);
   const supPopRef = useRef(null);
 
-  const toggleSup = () => setSupOpen(v => !v);
+  const toggleSup = () => setSupOpen((v) => !v);
   const closeSup = () => setSupOpen(false);
 
   // close on outside click / ESC
@@ -36,7 +37,9 @@ const Dashboard = () => {
       if (supBtnRef.current?.contains(e.target)) return;
       closeSup();
     };
-    const onEsc = (e) => { if (e.key === 'Escape') closeSup(); };
+    const onEsc = (e) => {
+      if (e.key === 'Escape') closeSup();
+    };
     window.addEventListener('click', onClick);
     window.addEventListener('keydown', onEsc);
     return () => {
@@ -45,57 +48,61 @@ const Dashboard = () => {
     };
   }, [supOpen]);
 
-  useEffect(() => {
-    const init = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return navigate('/login');
-
-      try {
-        const res = await fetch('/api/users/profile', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error('Failed to fetch user');
-        const data = await res.json();
-        setUserName(data.name || 'User');
-        setSuperUser(!!data.isSuperUser);
-      } catch (err) {
-        console.error('Failed to fetch user profile:', err);
-        navigate('/login');
-      } finally {
-        setLoading(false);
-      }
-
-      fetchPosts();
-    };
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const fetchPosts = async () => {
     try {
-      const res = await fetch('/api/posts', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (!res.ok) throw new Error('Failed to load posts');
-      const data = await res.json();
-      setPosts(data);
+      const data = await apiFetch('/api/posts');
+      setPosts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching posts:', err);
+      // Don’t hard-redirect; the page can still function without posts
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const init = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      try {
+        const profile = await apiFetch('/api/users/profile');
+        if (cancelled) return;
+
+        setUserName(profile?.name || 'User');
+        setSuperUser(!!profile?.isSuperUser);
+
+        // Load posts after we know auth is valid
+        await fetchPosts();
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+        // If profile fails, treat it as auth failure (common pattern)
+        localStorage.removeItem('token');
+        navigate('/login', { replace: true });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePost = async () => {
     if (!newPost.trim()) return;
     try {
-      const res = await fetch('/api/posts', {
+      await apiFetch('/api/posts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: newPost }),
       });
-      if (!res.ok) throw new Error('Failed to create post');
       setNewPost('');
       fetchPosts();
     } catch (err) {
@@ -104,58 +111,51 @@ const Dashboard = () => {
     }
   };
 
-    const handleUpgrade = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+  const handleUpgrade = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login', { replace: true });
+        return;
+      }
 
-    // 1) Check they have a funding card on file
-    const pmRes = await fetch('/api/billing/has-loan-payment-method', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      // 1) Check they have a funding card on file
+      let hasPayment = false;
+      try {
+        const pmData = await apiFetch('/api/billing/has-loan-payment-method');
+        hasPayment = !!pmData?.hasLoanPaymentMethod;
+      } catch (e) {
+        // If endpoint is missing/not ready, fail closed with a helpful message
+        console.warn('Could not check payment method:', e);
+        hasPayment = false;
+      }
 
-    let hasPayment = false;
-    if (pmRes.ok) {
-      const pmData = await pmRes.json().catch(() => ({}));
-      hasPayment = !!pmData?.hasLoanPaymentMethod;
-    }
+      if (!hasPayment) {
+        const go = window.confirm(
+          'To upgrade to SuperUser, please save a funding card in your Wallet first.\n\nGo to Wallet now?'
+        );
+        if (go) navigate('/wallet');
+        return;
+      }
 
-    if (!hasPayment) {
-      const go = window.confirm(
-        'To upgrade to SuperUser, please save a funding card in your Wallet first.\n\nGo to Wallet now?'
+      // 2) Call your SuperUser upgrade endpoint
+      await apiFetch('/api/users/superuser/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      setSuperUser(true);
+      alert(
+        '🎉 You’re now a SuperUser! Your monthly $1 fee will use your saved funding card.'
       );
-      if (go) navigate('/wallet');
-      return;
+    } catch (err) {
+      console.error('Upgrade error:', err);
+      alert(`Failed to upgrade:\n${err.message || err}`);
     }
-
-    // 2) Call your SuperUser upgrade endpoint (wallet or card, per our plan)
-    const res = await fetch('/api/users/superuser/upgrade', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      throw new Error(txt || 'Upgrade failed');
-    }
-
-    await res.json().catch(() => ({}));
-    setSuperUser(true);
-    alert('🎉 You’re now a SuperUser! Your monthly $1 fee will use your saved funding card.');
-  } catch (err) {
-    console.error('Upgrade error:', err);
-    alert(`Failed to upgrade:\n${err.message || err}`);
-  }
-};
+  };
 
   const getToday = () => {
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[new Date().getDay()];
   };
 
@@ -166,13 +166,9 @@ const Dashboard = () => {
     setProfileLoading(true);
     setProfileErr('');
     setProfileUser(null);
+
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`/api/users/${userId}/profile`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch(`/api/users/${userId}/profile`);
       setProfileUser(data);
     } catch (e) {
       console.error(e);
@@ -196,7 +192,8 @@ const Dashboard = () => {
       const rateStr = window.prompt('APR (%) offered by this lender:');
       const r = Number(rateStr);
       if (!Number.isFinite(r)) return;
-      amount = amt; rate = r;
+      amount = amt;
+      rate = r;
     }
     const monthsStr = window.prompt(`How many months for $${amount} at ${rate}% APR? (1–24)`);
     const months = Math.max(1, Math.min(24, parseInt(monthsStr || '0', 10)));
@@ -217,11 +214,9 @@ const Dashboard = () => {
   return (
     <div className="db-shell">
       {/* Header / greeting + CTA */}
-           <header className="db-hero card-glass">
+      <header className="db-hero card-glass">
         <div className="db-hero-text">
-          <h2 className="db-title">
-            Hey {userName}, Happy {getToday()}!
-          </h2>
+          <h2 className="db-title">Hey {userName}, Happy {getToday()}!</h2>
           {superUser && (
             <p className="db-subtitle">
               You’re a SuperUser – platform fees are waived on your repayments. 🎉
@@ -279,8 +274,7 @@ const Dashboard = () => {
                       <strong>SuperUser badge</strong> on your profile and posts.
                     </li>
                     <li>
-                      <strong>Priority support</strong> &amp; early access to new
-                      features.
+                      <strong>Priority support</strong> &amp; early access to new features.
                     </li>
                   </ul>
                   <div className="sup-popover__actions">
@@ -298,7 +292,6 @@ const Dashboard = () => {
           </div>
         )}
       </header>
-
 
       {/* Two-column content */}
       <div className="db-grid">
@@ -337,9 +330,7 @@ const Dashboard = () => {
                       >
                         {authorName}
                       </button>
-                      <time className="time">
-                        {new Date(post.createdAt).toLocaleString()}
-                      </time>
+                      <time className="time">{new Date(post.createdAt).toLocaleString()}</time>
                     </div>
                     <p className="content">{post.content}</p>
                   </article>

@@ -3,36 +3,40 @@ import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import { apiFetch } from '../utils/api';
 
 const Layout = () => {
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setUserLoading(false);
-      return;
-    }
+    let cancelled = false;
 
     const loadProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        if (!cancelled) setUserLoading(false);
+        return;
+      }
+
       try {
-        const res = await fetch('/api/users/profile', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          throw new Error('Failed to load profile');
-        }
-        const data = await res.json();
-        setUser(data); // expects { role, name, isSuperUser, ... }
+        const data = await apiFetch('/api/users/profile');
+        if (!cancelled) setUser(data); // expects { role, name, isSuperUser, ... }
       } catch (err) {
         console.error('Layout: failed to load user profile', err);
+        // Optional: if you want to hard-reset auth on failure:
+        // localStorage.removeItem('token');
+        // window.location.href = '/login';
       } finally {
-        setUserLoading(false);
+        if (!cancelled) setUserLoading(false);
       }
     };
 
     loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
