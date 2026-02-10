@@ -1,6 +1,7 @@
 // src/features/loans/CreateLoan.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../../utils/api';
 import './CreateLoan.css';
 
 const CreateLoan = () => {
@@ -17,21 +18,29 @@ const CreateLoan = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchUserStatus = async () => {
       try {
-        const res = await fetch('/api/users/profile', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-        const data = await res.json();
-        setIsSuperUser(data?.isSuperUser || false);
+        const profile = await apiFetch('/api/users/profile');
+        if (cancelled) return;
+        setIsSuperUser(!!profile?.isSuperUser);
       } catch (err) {
         console.error('Failed to fetch user status', err);
+        // treat as auth issue if profile fails
+        localStorage.removeItem('token');
+        navigate('/login', { replace: true });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     fetchUserStatus();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -42,35 +51,41 @@ const CreateLoan = () => {
     e.preventDefault();
 
     const payload = {
-      amount: parseFloat(formData.amount),
-      duration: parseInt(formData.duration, 10),
-      interestRate: parseFloat(formData.interestRate),
+      amount: Number(formData.amount),
+      duration: Number(formData.duration),
+      interestRate: Number(formData.interestRate),
       purpose: (formData.purpose || '').trim(),
-      isSuperUser,
     };
 
+    // quick client-side validation (prevents NaN)
+    if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+      alert('Please enter a valid loan amount.');
+      return;
+    }
+    if (!Number.isFinite(payload.duration) || payload.duration < 1) {
+      alert('Please enter a valid duration (months).');
+      return;
+    }
+    if (!Number.isFinite(payload.interestRate) || payload.interestRate < 0) {
+      alert('Please enter a valid interest rate (APR).');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/loans', {
+      const data = await apiFetch('/api/loans', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to create loan request');
-      }
-
-      const data = await res.json();
       console.log('Loan submitted:', data);
       alert('Loan request submitted successfully!');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error) {
-      console.error('Error submitting loan request:', error.message);
-      alert(`There was a problem submitting your loan request: ${error.message}`);
+      console.error('Error submitting loan request:', error);
+      alert(
+        `There was a problem submitting your loan request:\n${error?.message || error}`
+      );
     }
   };
 
@@ -194,19 +209,13 @@ const CreateLoan = () => {
             onChange={handleInputChange}
             placeholder="Tell lenders briefly why you need this loan and how you plan to repay it."
           />
-          <div className="cl-hint">
-            Strong, specific descriptions get better offers.
-          </div>
+          <div className="cl-hint">Strong, specific descriptions get better offers.</div>
         </div>
 
         <div className="cl-divider" />
 
         <div className="cl-actions">
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => navigate(-1)}
-          >
+          <button type="button" className="btn btn--ghost" onClick={() => navigate(-1)}>
             ← Back
           </button>
           <button type="submit" className="btn btn--primary btn--lg">
