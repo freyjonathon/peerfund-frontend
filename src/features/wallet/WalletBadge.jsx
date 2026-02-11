@@ -8,7 +8,7 @@ export default function WalletBadge() {
   const refreshBalance = async () => {
     try {
       setLoading(true);
-      const w = await apiFetch('/api/wallet');
+      const w = await apiFetch('/api/wallet/me'); // ✅ FIX
       setCents(Number(w?.availableCents || 0));
     } catch (err) {
       console.warn('Failed to refresh wallet', err);
@@ -20,10 +20,11 @@ export default function WalletBadge() {
   // Initial load
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         setLoading(true);
-        const w = await apiFetch('/api/wallet');
+        const w = await apiFetch('/api/wallet/me'); // ✅ FIX
         if (!cancelled) setCents(Number(w?.availableCents || 0));
       } catch (err) {
         console.warn('Failed to refresh wallet', err);
@@ -45,7 +46,9 @@ export default function WalletBadge() {
   return (
     <button className="balance-pill" onClick={refreshBalance} type="button">
       <span className="pill-label">Balance</span>
-      <span className="pill-amount">{loading ? ' ...' : dollars}</span>
+      <span className="pill-amount">
+        {loading ? '…' : dollars}
+      </span>
     </button>
   );
 }
