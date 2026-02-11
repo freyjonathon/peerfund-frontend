@@ -1,24 +1,35 @@
 // src/features/loans/LoanMarketplace.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import './LoanMarketplace.css';
 import InlineDiscussion from './InlineDiscussion';
 import UserProfileModal from '../../components/UserProfileModal';
-import OfferModal from '../../components/OfferModal'; // ✅ new import
+import OfferModal from '../../components/OfferModal';
+import { apiFetch } from '../../utils/api';
 
 const fmtMoney = (n) =>
   typeof n === 'number' && !Number.isNaN(n) ? `$${n.toFixed(2)}` : '—';
 
+function safeNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // Decode JWT to get the current user id (so we can hide their own requests)
 function getCurrentUserId() {
-  const t = localStorage.getItem('token');
+  let t = localStorage.getItem('token') || '';
+  t = t.replace(/^"|"$/g, '');
   if (!t) return null;
   try {
     const payload = JSON.parse(atob(t.split('.')[1] || ''));
-    return payload?.userId ?? null;
+    return payload?.userId ?? payload?.id ?? null;
   } catch {
     return null;
   }
+}
+
+// Normalize a loan id across Prisma/Mongo variants
+function loanIdOf(loan) {
+  return loan?.id || loan?._id || loan?.loanId || null;
 }
 
 export default function LoanMarketplace() {
@@ -31,7 +42,7 @@ export default function LoanMarketplace() {
   const [expanded, setExpanded] = useState({});
   // which user profile to show in the modal
   const [profileUserId, setProfileUserId] = useState(null);
-  // NEW: track which loan’s offer modal is open
+  // which loan’s offer modal is open
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
   const currentUserId = getCurrentUserId();
@@ -43,24 +54,43 @@ export default function LoanMarketplace() {
     });
 
   useEffect(() => {
+    let alive = true;
+
     const fetchLoans = async () => {
       try {
         setLoading(true);
         setError('');
-        const res = await axios.get('/api/loans/open', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-        const data = Array.isArray(res.data) ? res.data : res.data?.items || [];
-        setLoans(data);
+
+        // ✅ use apiFetch so base URL + auth behavior matches the rest of your app
+        const data = await apiFetch('/api/loans/open');
+
+        const items = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data?.loans)
+              ? data.loans
+              : [];
+
+        if (!alive) return;
+
+        // Filter out any entries missing an id (prevents React key + toggle issues)
+        const cleaned = items.filter((x) => loanIdOf(x));
+        setLoans(cleaned);
       } catch (err) {
-        console.error('Error fetching loan requests:', err);
-        setError('Failed to load open loan requests. Please try again.');
+        console.error('Error fetching open loans:', err);
+        if (!alive) return;
+        setError(err?.message || 'Failed to load open loan requests. Please try again.');
         setLoans([]);
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     };
+
     fetchLoans();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const handleFilterChange = (e) =>
@@ -69,19 +99,27 @@ export default function LoanMarketplace() {
   // Exclude the viewer's own requests first, then apply filters
   const visible = useMemo(() => {
     const notMine = loans.filter((loan) => {
-      const borrowerId = loan.borrower?.id || loan.borrowerId;
-      return !currentUserId || !borrowerId || borrowerId !== currentUserId;
+      const borrowerId = loan.borrower?.id || loan.borrower?._id || loan.borrowerId;
+      return !currentUserId || !borrowerId || String(borrowerId) !== String(currentUserId);
     });
 
     return notMine.filter((loan) => {
-      const amount = Number(loan.amount);
+      const amt = safeNumber(loan.amount);
+      const dur = safeNumber(loan.duration);
+
+      const minAmt = filters.amount ? safeNumber(filters.amount) : null;
+      const durFilter = filters.duration ? safeNumber(filters.duration) : null;
+
       const matchesAmount =
-        !filters.amount || (Number.isFinite(amount) && amount >= Number(filters.amount));
+        !minAmt || (amt != null && amt >= minAmt);
+
       const matchesPurpose =
         !filters.purpose ||
-        (loan.purpose || '').toLowerCase().includes(filters.purpose.toLowerCase());
+        String(loan.purpose || '').toLowerCase().includes(filters.purpose.toLowerCase());
+
       const matchesDuration =
-        !filters.duration || Number(loan.duration) === Number(filters.duration);
+        !durFilter || (dur != null && dur === durFilter);
+
       return matchesAmount && matchesPurpose && matchesDuration;
     });
   }, [loans, filters, currentUserId]);
@@ -127,13 +165,18 @@ export default function LoanMarketplace() {
       ) : (
         <div className="lm-grid">
           {visible.map((loan) => {
+            const id = loanIdOf(loan);
+
             const borrower = loan.borrower || {};
             const borrowerId = borrower.id || borrower._id || loan.borrowerId;
             const name = borrower.name || borrower.fullName || 'Unknown';
-            const duration = Number(loan.duration);
-            const interest = loan.interestRate != null ? `${loan.interestRate}%` : '—';
-            const amount = Number(loan.amount) || 0;
-            const isOpen = !!expanded[loan.id];
+
+            const duration = safeNumber(loan.duration);
+            const interest =
+              loan.interestRate != null ? `${loan.interestRate}%` : '—';
+
+            const amount = safeNumber(loan.amount) ?? 0;
+            const isOpen = !!expanded[id];
 
             // robust offer count
             const offerCount =
@@ -142,7 +185,7 @@ export default function LoanMarketplace() {
                 (Array.isArray(loan.loanOffers) ? loan.loanOffers.length : 0));
 
             return (
-              <div className="lm-card" key={loan.id}>
+              <div className="lm-card" key={id}>
                 {/* Header row */}
                 <div className="lm-card-header">
                   <div className="lm-header-left">
@@ -165,7 +208,7 @@ export default function LoanMarketplace() {
                   <div className="lm-header-right">
                     <div style={{ fontSize: '.75rem', color: '#64748b' }}>Duration</div>
                     <div style={{ fontWeight: 600 }}>
-                      {Number.isFinite(duration) ? `${duration} months` : '—'}
+                      {duration != null ? `${duration} months` : '—'}
                     </div>
                   </div>
 
@@ -174,23 +217,21 @@ export default function LoanMarketplace() {
                     <div style={{ fontWeight: 600 }}>{interest}</div>
                   </div>
 
-                  {/* Offers count */}
                   <div className="lm-header-right">
                     <div style={{ fontSize: '.75rem', color: '#64748b' }}>Offers</div>
                     <div style={{ fontWeight: 600 }}>{offerCount}</div>
                   </div>
 
-                  {/* Actions */}
                   <div className="lm-actions-top" style={{ gap: '.5rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       className="action-btn primary"
                       onClick={() => {
-                        setSelectedLoanId(loan.id);
-                        toggle(loan.id); // ✅ use toggle so inline discussion can expand
+                        setSelectedLoanId(id); // ✅ use normalized id
+                        toggle(id);
                       }}
                       aria-expanded={isOpen}
-                      aria-controls={`loan-details-${loan.id}`}
+                      aria-controls={`loan-details-${id}`}
                     >
                       💬 View Convo / 💵 Make Offer
                     </button>
@@ -200,14 +241,13 @@ export default function LoanMarketplace() {
                 {/* Collapsible details */}
                 {isOpen && (
                   <div
-                    id={`loan-details-${loan.id}`}
+                    id={`loan-details-${id}`}
                     className="lm-details"
                     role="region"
                     aria-label={`Loan details for ${name}`}
                   >
                     <div className="lm-details-grid" />
-                    {/* Inline public discussion */}
-                    <InlineDiscussion threadId={loan.id} limit={5} compact showHeader={false} />
+                    <InlineDiscussion threadId={id} limit={5} compact showHeader={false} />
                   </div>
                 )}
               </div>
