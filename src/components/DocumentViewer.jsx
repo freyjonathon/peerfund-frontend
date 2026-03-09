@@ -1,6 +1,7 @@
 // src/components/DocumentViewer.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { apiFetch } from '../utils/api';
 
 const DocumentViewer = () => {
   const { documentId } = useParams();
@@ -13,6 +14,7 @@ const DocumentViewer = () => {
 
   useEffect(() => {
     let alive = true;
+    let localObjectUrl = '';
 
     const load = async () => {
       try {
@@ -25,42 +27,39 @@ const DocumentViewer = () => {
           return;
         }
 
-        const res = await fetch(`/api/documents/${documentId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        // If unauthorized, force re-login
-        if (res.status === 401) {
-          navigate('/login', { replace: true });
-          return;
-        }
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || 'Failed to load document');
-        }
-
-        // Expecting JSON like: { id, title, mimeType, fileName, base64 }
-        const data = await res.json();
+        const data = await apiFetch(`/api/documents/${documentId}`);
 
         if (!alive) return;
         setDoc(data);
 
-        // If backend returns base64 for binary docs, create a blob URL
         if (data?.base64 && data?.mimeType) {
           const byteChars = atob(data.base64);
           const byteNumbers = new Array(byteChars.length);
-          for (let i = 0; i < byteChars.length; i++) {
+
+          for (let i = 0; i < byteChars.length; i += 1) {
             byteNumbers[i] = byteChars.charCodeAt(i);
           }
+
           const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray], { type: data.mimeType });
-          const url = URL.createObjectURL(blob);
-          setObjectUrl(url);
+          localObjectUrl = URL.createObjectURL(blob);
+
+          if (alive) {
+            setObjectUrl(localObjectUrl);
+          }
         }
       } catch (e) {
         console.error('DocumentViewer load error:', e);
-        if (alive) setErr(e.message || 'Error: Document not found');
+
+        const msg = String(e?.message || '');
+        if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
+          navigate('/login', { replace: true });
+          return;
+        }
+
+        if (alive) {
+          setErr(e.message || 'Error: Document not found');
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -70,10 +69,9 @@ const DocumentViewer = () => {
 
     return () => {
       alive = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (localObjectUrl) URL.revokeObjectURL(localObjectUrl);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId]);
+  }, [documentId, navigate]);
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
   if (err) return <div style={{ padding: 16 }}>Error: {err}</div>;
@@ -87,7 +85,9 @@ const DocumentViewer = () => {
     <div style={{ padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
         <h2 style={{ margin: 0 }}>{doc.title || doc.fileName || 'Document'}</h2>
-        <button onClick={() => navigate(-1)}>← Back</button>
+        <button type="button" onClick={() => navigate(-1)}>
+          ← Back
+        </button>
       </div>
 
       <div style={{ marginTop: 12, color: '#64748b' }}>
