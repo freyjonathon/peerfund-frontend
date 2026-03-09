@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './VerificationPage.css';
 
-// ✅ Vercel env var. Locally falls back to localhost
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5050').replace(/\/$/, '');
 
 function getToken() {
@@ -13,26 +12,87 @@ function getToken() {
   return t || '';
 }
 
-// Safer JSON parsing for non-JSON responses (HTML, plain text, etc.)
 async function readJsonOrText(res) {
   const text = await res.text();
   if (!text) return null;
   try {
     return JSON.parse(text);
   } catch {
-    return text; // return raw text so caller can show it
+    return text;
   }
+}
+
+async function fileToImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = (err) => {
+      URL.revokeObjectURL(url);
+      reject(err);
+    };
+    img.src = url;
+  });
+}
+
+async function canvasToBlob(canvas, quality = 0.82) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+  });
+}
+
+async function compressImage(file) {
+  if (!file?.type?.startsWith('image/')) return file;
+
+  const image = await fileToImage(file);
+
+  const maxDimension = 1600;
+  let { width, height } = image;
+
+  if (width > height && width > maxDimension) {
+    height = Math.round((height * maxDimension) / width);
+    width = maxDimension;
+  } else if (height >= width && height > maxDimension) {
+    width = Math.round((width * maxDimension) / height);
+    height = maxDimension;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, width, height);
+
+  let quality = 0.82;
+  let blob = await canvasToBlob(canvas, quality);
+
+  while (blob && blob.size > 1.8 * 1024 * 1024 && quality > 0.5) {
+    quality -= 0.08;
+    blob = await canvasToBlob(canvas, quality);
+  }
+
+  if (!blob) return file;
+
+  const baseName = (file.name || 'upload').replace(/\.[^.]+$/, '');
+  return new File([blob], `${baseName}.jpg`, {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
 }
 
 export default function VerificationPage() {
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState('LOADING'); // APPROVED | PENDING | REJECTED | ERROR
+  const [status, setStatus] = useState('LOADING');
   const [notes, setNotes] = useState('');
   const [checklist, setChecklist] = useState(null);
 
   const [error, setError] = useState('');
-  const [uploadingField, setUploadingField] = useState(null); // 'idFront' | 'idBack' | 'selfie' | null
+  const [uploadingField, setUploadingField] = useState(null);
   const [submitMessage, setSubmitMessage] = useState('');
 
   const token = useMemo(getToken, []);
@@ -63,9 +123,7 @@ export default function VerificationPage() {
         throw new Error(msg);
       }
 
-      // checklist is returned directly from backend
       const data = body && typeof body === 'object' ? body : null;
-
       if (!data) {
         throw new Error('Unexpected response from server (empty or non-JSON).');
       }
@@ -92,18 +150,12 @@ export default function VerificationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If user already approved, don’t trap them here
   useEffect(() => {
     if (status === 'APPROVED') {
       navigate('/dashboard', { replace: true });
     }
   }, [status, navigate]);
 
-  /**
-   * Upload a single file to a given endpoint.
-   * inputId: id of <input type="file" ...>
-   * endpoint: backend route, e.g. /api/verification/id/front
-   */
   async function uploadOne(inputId, endpoint) {
     if (!token) {
       setError('Not logged in');
@@ -111,25 +163,27 @@ export default function VerificationPage() {
     }
 
     const input = document.getElementById(inputId);
-    const file = input?.files?.[0];
-    if (!file) {
+    const originalFile = input?.files?.[0];
+
+    if (!originalFile) {
       setError('Please choose a file first.');
       return;
     }
-
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
       setUploadingField(inputId);
       setError('');
       setSubmitMessage('');
 
+      const file = await compressImage(originalFile);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          // DO NOT set Content-Type for FormData; browser will set boundary
         },
         body: formData,
       });
@@ -141,10 +195,14 @@ export default function VerificationPage() {
           (typeof body === 'object' && body?.error) ||
           (typeof body === 'string' && body) ||
           `Upload failed (${res.status})`;
+
+        if (res.status === 413) {
+          throw new Error('That image is still too large. Try a screenshot of the photo or a lower-resolution image.');
+        }
+
         throw new Error(msg);
       }
 
-      // expected: { message, checklist }
       const nextChecklist =
         body && typeof body === 'object' ? body?.checklist || body?.data?.checklist : null;
 
@@ -155,9 +213,7 @@ export default function VerificationPage() {
         await fetchStatus();
       }
 
-      // reset the file input so user can re-upload same file if needed
       if (input) input.value = '';
-
       setSubmitMessage('Upload successful.');
     } catch (err) {
       console.error('uploadOne error:', err);
@@ -237,13 +293,10 @@ export default function VerificationPage() {
         {error && <div className="verify-error">{error}</div>}
 
         <div className="verify-grid">
-          {/* Front of ID */}
           <div className="verify-field">
             <h3>Front of ID</h3>
             <p>Upload a clear photo of the front of your government-issued ID.</p>
-
             <input type="file" id="idFront" accept="image/*" />
-
             <button
               type="button"
               onClick={() => uploadOne('idFront', '/api/verification/id/front')}
@@ -251,17 +304,13 @@ export default function VerificationPage() {
             >
               {uploadingField === 'idFront' ? 'Uploading…' : 'Upload front of ID'}
             </button>
-
             {checklist?.hasIdFront && <div className="verify-ok">✓ Front of ID on file</div>}
           </div>
 
-          {/* Back of ID */}
           <div className="verify-field">
             <h3>Back of ID</h3>
             <p>Upload a clear photo of the back of your ID.</p>
-
             <input type="file" id="idBack" accept="image/*" />
-
             <button
               type="button"
               onClick={() => uploadOne('idBack', '/api/verification/id/back')}
@@ -269,17 +318,13 @@ export default function VerificationPage() {
             >
               {uploadingField === 'idBack' ? 'Uploading…' : 'Upload back of ID'}
             </button>
-
             {checklist?.hasIdBack && <div className="verify-ok">✓ Back of ID on file</div>}
           </div>
 
-          {/* Selfie */}
           <div className="verify-field">
             <h3>Selfie</h3>
             <p>Upload a selfie. Make sure your face is clearly visible.</p>
-
             <input type="file" id="selfie" accept="image/*" />
-
             <button
               type="button"
               onClick={() => uploadOne('selfie', '/api/verification/selfie')}
@@ -287,7 +332,6 @@ export default function VerificationPage() {
             >
               {uploadingField === 'selfie' ? 'Uploading…' : 'Upload selfie'}
             </button>
-
             {checklist?.hasSelfie && <div className="verify-ok">✓ Selfie on file</div>}
           </div>
         </div>
