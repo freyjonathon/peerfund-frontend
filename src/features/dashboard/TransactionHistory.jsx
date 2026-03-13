@@ -1,8 +1,8 @@
 // src/features/dashboard/TransactionHistory.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { CSVLink } from 'react-csv';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../../utils/api';
 
 const TransactionHistory = () => {
   const [transactions, setTransactions] = useState([]);
@@ -10,8 +10,6 @@ const TransactionHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
-  // --- helpers -----------------------------------------------------------
 
   const getAmountCents = (tx) => {
     if (typeof tx.amountCents === 'number') return tx.amountCents;
@@ -50,7 +48,6 @@ const TransactionHistory = () => {
     }
   };
 
-  // classify as money sent or received (best-effort, won’t crash)
   const classifyFlow = (tx) => {
     const t = (tx.type || '').toUpperCase();
     const direction = (tx.direction || '').toUpperCase?.() || '';
@@ -72,11 +69,9 @@ const TransactionHistory = () => {
   };
 
   const getLoanLabel = (tx) => {
-    if (!tx.loanId) return '';
-    // Show a short label like "Loan …abcd12" instead of full ObjectId
-    const id = String(tx.loanId);
-    const tail = id.slice(-6);
-    return `Loan …${tail}`;
+    if (!tx.loanId && !tx.referenceId) return '';
+    const id = String(tx.loanId || tx.referenceId);
+    return `Loan …${id.slice(-6)}`;
   };
 
   const handleLoanClick = (loanId) => {
@@ -84,25 +79,21 @@ const TransactionHistory = () => {
     navigate(`/loan/${loanId}`);
   };
 
-  // --- fetch on mount ----------------------------------------------------
-
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
         setError('');
         setLoading(true);
 
-        const res = await axios.get('/api/transactions', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
+        const walletData = await apiFetch('/api/wallet/me');
+        const ledger = Array.isArray(walletData?.ledger) ? walletData.ledger : [];
 
-        const txs = Array.isArray(res.data) ? res.data : [];
-        setTransactions(txs);
+        setTransactions(ledger);
 
         let sentCents = 0;
         let receivedCents = 0;
 
-        txs.forEach((tx) => {
+        ledger.forEach((tx) => {
           const cents = getAmountCents(tx);
           const flow = classifyFlow(tx);
           if (flow === 'sent') sentCents += cents;
@@ -127,13 +118,11 @@ const TransactionHistory = () => {
     fetchTransactions();
   }, []);
 
-  // --- CSV export data ---------------------------------------------------
-
   const csvData = transactions.map((tx) => ({
     date: getDisplayDate(tx),
     type: getDisplayType(tx),
     amount: formatDollars(getAmountCents(tx)),
-    loanId: tx.loanId || '',
+    loanId: tx.loanId || tx.referenceId || '',
     from: tx.fromUser?.name || tx.fromName || '',
     to: tx.toUser?.name || tx.toName || '',
   }));
@@ -146,8 +135,6 @@ const TransactionHistory = () => {
     { label: 'From', key: 'from' },
     { label: 'To', key: 'to' },
   ];
-
-  // --- render ------------------------------------------------------------
 
   return (
     <div style={{ padding: '2rem' }}>
@@ -168,7 +155,6 @@ const TransactionHistory = () => {
         </div>
       )}
 
-      {/* Summary cards */}
       <div
         style={{
           display: 'flex',
@@ -231,13 +217,13 @@ const TransactionHistory = () => {
           </div>
         </div>
 
-        <div
-          style={{
-            flex: '0 0 auto',
-            alignSelf: 'flex-end',
-          }}
-        >
-          <CSVLink data={csvData} headers={csvHeaders} filename="transactions.csv" style={{ textDecoration: 'none' }}>
+        <div style={{ flex: '0 0 auto', alignSelf: 'flex-end' }}>
+          <CSVLink
+            data={csvData}
+            headers={csvHeaders}
+            filename="transactions.csv"
+            style={{ textDecoration: 'none' }}
+          >
             <button
               style={{
                 padding: '0.5rem 0.9rem',
@@ -255,7 +241,6 @@ const TransactionHistory = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div
         style={{
           borderRadius: 12,
@@ -281,9 +266,9 @@ const TransactionHistory = () => {
               <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Date</th>
               <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Type</th>
               <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
-              <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Loan</th>
-              <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>From</th>
-              <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>To</th>
+              <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Reference</th>
+              <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Direction</th>
+              <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>Balance After</th>
             </tr>
           </thead>
           <tbody>
@@ -296,7 +281,7 @@ const TransactionHistory = () => {
             ) : transactions.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>
-                  No transactions yet. Deposits, repayments, withdrawals, and fees will appear here.
+                  No transactions yet. Deposits, withdrawals, and wallet activity will appear here.
                 </td>
               </tr>
             ) : (
@@ -306,7 +291,7 @@ const TransactionHistory = () => {
                 const amountColor =
                   flow === 'sent' ? '#b91c1c' : flow === 'received' ? '#166534' : '#0f172a';
 
-                const loanLabel = getLoanLabel(tx);
+                const refLabel = getLoanLabel(tx);
 
                 return (
                   <tr key={tx.id}>
@@ -331,7 +316,7 @@ const TransactionHistory = () => {
                         <button
                           type="button"
                           onClick={() => handleLoanClick(tx.loanId)}
-                          aria-label={`Open ${loanLabel}`}
+                          aria-label={`Open ${refLabel}`}
                           style={{
                             padding: '2px 8px',
                             borderRadius: 999,
@@ -341,17 +326,19 @@ const TransactionHistory = () => {
                             cursor: 'pointer',
                           }}
                         >
-                          {loanLabel}
+                          {refLabel}
                         </button>
                       ) : (
-                        '—'
+                        tx.referenceId || '—'
                       )}
                     </td>
                     <td style={{ padding: '0.6rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
-                      {tx.fromUser?.name || tx.fromName || '—'}
+                      {tx.direction || '—'}
                     </td>
                     <td style={{ padding: '0.6rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
-                      {tx.toUser?.name || tx.toName || '—'}
+                      {typeof tx.balanceAfterCents === 'number'
+                        ? `$${formatDollars(tx.balanceAfterCents)}`
+                        : '—'}
                     </td>
                   </tr>
                 );
