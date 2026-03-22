@@ -27,6 +27,16 @@ export default function SaveFundingCard({ onSaved }) {
         throw new Error('No clientSecret returned from server');
       }
 
+      // 🔍 DEBUG LOGS
+      console.log(
+        'Frontend Stripe key:',
+        (process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '').slice(0, 12)
+      );
+      console.log(
+        'Client Secret:',
+        String(clientSecret || '').slice(0, 40)
+      );
+
       // 2) Confirm card setup with CardElement
       const card = elements.getElement(CardElement);
       if (!card) {
@@ -58,7 +68,13 @@ export default function SaveFundingCard({ onSaved }) {
       alert('Funding card saved!');
       onSaved?.();
     } catch (e) {
-      console.error('SaveFundingCard error:', e);
+      console.error('SaveFundingCard FULL error:', {
+        message: e?.message,
+        code: e?.code,
+        type: e?.type,
+        raw: e,
+      });
+
       alert(e?.message || 'Failed to save card');
     } finally {
       setBusy(false);
