@@ -99,9 +99,9 @@ const LoanDetails = () => {
       // If I am the borrower, check if I already have a loan funding payment method
       if (data.borrower?.id === userId) {
         try {
-          const pmRes = await fetch('/api/stripe/has-loan-payment-method', {
+          const pmRes = await fetch('/api/billing/has-loan-payment-method', {
             headers: { Authorization: `Bearer ${token}` },
-          });
+            });
           if (pmRes.ok) {
             const pmData = await pmRes.json();
             setHasLoanBank(!!pmData.hasLoanPaymentMethod);
@@ -486,11 +486,25 @@ const LoanDetails = () => {
             background: '#f8fafc',
           }}
         >
-          <h3 style={{ marginTop: 0 }}>Before we disburse your loan…</h3>
+          <h3 style={{ marginTop: 0 }}>Before you accept or repay loans…</h3>
           <p style={{ color: '#334155' }}>
-            You must link a bank account in order to receive your loan funds.
+            Please save a funding card in your Wallet. This card will be used for future repayments.
           </p>
-          <LinkLoanBankButton onLinked={() => setHasLoanBank(true)} />
+          <button
+            type="button"
+            onClick={() => navigate('/wallet')}
+            style={{
+              background: '#4f46e5',
+              border: '1px solid #4f46e5',
+              color: '#fff',
+              fontWeight: 700,
+              padding: '8px 12px',
+              borderRadius: 10,
+              cursor: 'pointer',
+            }}
+          >
+            Go to Wallet
+          </button>
         </div>
       )}
 

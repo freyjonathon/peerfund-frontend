@@ -99,10 +99,10 @@ function LinkBankFirstModal({ open, onClose }) {
           padding: 20,
         }}
       >
-        <h3 style={{ margin: 0 }}>Add a bank to receive funds</h3>
-        <p style={{ color: '#334155', marginTop: 8 }}>
-          Before you can accept an offer, please link a bank account for loan
-          disbursement on the Payment Method page.
+        <h3 style={{ margin: 0 }}>Save a funding card in your Wallet</h3>
+            <p style={{ color: '#334155', marginTop: 8 }}>
+              Before you can accept an offer, please save a funding card in your Wallet.
+              This card will be used for future repayments.
         </p>
         <div
           style={{
@@ -118,10 +118,10 @@ function LinkBankFirstModal({ open, onClose }) {
           <button
             className="action-btn sm primary"
             onClick={() => {
-              window.location.assign('/payment-method');
+              window.location.assign('/wallet');
             }}
           >
-            Go to Payment Method
+            Go to Wallet
           </button>
         </div>
       </div>
@@ -262,24 +262,17 @@ export default function MoneySummary() {
   const [showLinkModal, setShowLinkModal] = useState(false);
 
   const checkHasLoanPaymentMethod = useCallback(async () => {
-    if (hasLoanPM !== null) return hasLoanPM;
+  if (hasLoanPM !== null) return hasLoanPM;
     try {
-      // MoneySummary historically used /api/stripe/..., Dashboard used /api/billing/...
-      // Try stripe first, then billing as fallback so prod doesn't break.
-      let d = null;
-      try {
-        d = await apiFetch('/api/stripe/has-loan-payment-method');
-      } catch (e1) {
-        d = await apiFetch('/api/billing/has-loan-payment-method');
-      }
-      const val = !!d?.hasLoanPaymentMethod;
-      setHasLoanPM(val);
-      return val;
-    } catch (err) {
-      setHasLoanPM(false);
-      return false;
-    }
-  }, [hasLoanPM]);
+    const d = await apiFetch('/api/billing/has-loan-payment-method');
+    const val = !!d?.hasLoanPaymentMethod;
+    setHasLoanPM(val);
+    return val;
+  } catch (err) {
+    setHasLoanPM(false);
+    return false;
+  }
+    }, [hasLoanPM]);
 
   /* ------------------ Fetch helpers (market + direct) ------------------ */
 
