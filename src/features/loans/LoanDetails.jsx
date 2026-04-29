@@ -4,7 +4,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import RepaymentForm from './RepaymentForm';
 import ContractModal from '../../components/ContractModal';
 import UserProfileModal from '../../components/UserProfileModal';
-import LinkLoanBankButton from './LinkLoanBankButton';
 import LoanFundingPanel from './LoanFundingPanel';
 import WalletPanel from '../wallet/WalletPanel';
 
