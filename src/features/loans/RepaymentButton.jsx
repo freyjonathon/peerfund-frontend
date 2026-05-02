@@ -3,14 +3,8 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { apiFetch } from '../../utils/api';
 
-/**
- * Props:
- *  - loanId: string
- *  - amount: number (installment this period – display only)
- *  - onPaid?: () => void | Promise<void>
- */
 export default function RepaymentButton({ loanId, amount, onPaid }) {
-  const [source, setSource] = useState('wallet'); // 'wallet' | 'bank'
+  const [source, setSource] = useState('wallet'); // wallet | card
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [okMsg, setOkMsg] = useState('');
@@ -31,10 +25,11 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
       await apiFetch(`/api/loans/${loanId}/pay-next`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source }), // wallet | bank
+        body: JSON.stringify({ paymentSource: source }),
       });
 
       setOkMsg('Payment submitted successfully.');
+
       if (typeof onPaid === 'function') {
         await onPaid();
       }
@@ -48,14 +43,12 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
 
   return (
     <div style={{ marginTop: 12 }}>
-      {/* Optional amount display */}
       {displayAmount && (
         <div style={{ marginBottom: 8, fontSize: 13, color: '#334155' }}>
           <strong>Next installment:</strong> {displayAmount}
         </div>
       )}
 
-      {/* Source selector */}
       <div
         style={{
           display: 'flex',
@@ -84,13 +77,19 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
           <input
             type="radio"
             name={`pay-source-${loanId}`}
-            value="bank"
-            checked={source === 'bank'}
-            onChange={() => setSource('bank')}
+            value="card"
+            checked={source === 'card'}
+            onChange={() => setSource('card')}
           />
-          Linked bank (payment method)
+          Saved funding card
         </label>
       </div>
+
+      {source === 'card' && (
+        <div style={{ marginBottom: 8, fontSize: 12, color: '#64748b' }}>
+          Card payments may include Stripe processing fees added on top.
+        </div>
+      )}
 
       <button
         type="button"

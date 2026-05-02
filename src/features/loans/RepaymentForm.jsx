@@ -1,9 +1,12 @@
+// src/features/loans/RepaymentForm.jsx
 import React, { useEffect, useState } from 'react';
 
 const RepaymentForm = ({ loanId, onPaymentSubmitted }) => {
   const [repaymentDetails, setRepaymentDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [paymentSource, setPaymentSource] = useState('wallet'); // wallet | card
+  const [isPaying, setIsPaying] = useState(false);
+  const [error, setError] = useState('');
 
   const token = localStorage.getItem('token');
 
@@ -11,27 +14,24 @@ const RepaymentForm = ({ loanId, onPaymentSubmitted }) => {
     const fetchRepaymentDetails = async () => {
       try {
         setLoading(true);
+        setError('');
 
         const res = await fetch(`/api/repayments/${loanId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) throw new Error('Failed to load repayments');
+
         const repayments = await res.json();
 
         const nextRepayment = Array.isArray(repayments)
           ? repayments.find((r) => r.status === 'PENDING')
           : null;
 
-        if (!nextRepayment) {
-          setRepaymentDetails(null);
-          return;
-        }
-
-        setRepaymentDetails(nextRepayment);
+        setRepaymentDetails(nextRepayment || null);
       } catch (err) {
         console.error('Error fetching repayment info:', err);
-        alert('⚠️ Could not load repayment details.');
+        setError('Could not load repayment details.');
         setRepaymentDetails(null);
       } finally {
         setLoading(false);
@@ -47,89 +47,144 @@ const RepaymentForm = ({ loanId, onPaymentSubmitted }) => {
   const {
     id: repaymentId,
     basePayment = 0,
+    peerfundFee = 0,
     platformFee = 0,
+    bankingFee = 0,
     bankFee = 0,
+    totalCharged,
     dueDate,
   } = repaymentDetails;
 
-  const totalDue = (
-    Number(basePayment) +
-    Number(platformFee || 0) +
-    Number(bankFee || 0)
-  ).toFixed(2);
+  const displayPeerfundFee = Number(peerfundFee || platformFee || 0);
+  const displayBankingFee = Number(bankingFee || bankFee || 0);
 
-  const startCheckout = async () => {
+  const calculatedTotal =
+    Number(basePayment || 0) + displayPeerfundFee + displayBankingFee;
+
+  const totalDue = Number(
+    typeof totalCharged === 'number' && totalCharged > 0
+      ? totalCharged
+      : calculatedTotal
+  );
+
+  const submitPayment = async () => {
     try {
-      setIsStartingCheckout(true);
+      setIsPaying(true);
+      setError('');
 
-      const res = await fetch('/api/payments/repayment-session', {
+      const res = await fetch(`/api/loans/${loanId}/pay-next`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          loanId,
-          repaymentId, // let backend lock the amount and add metadata
-        }),
+        body: JSON.stringify({ paymentSource }),
       });
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Could not create checkout session');
+        throw new Error(errJson.error || 'Payment failed');
       }
 
       const data = await res.json();
 
-      // ✅ Use the prop so ESLint passes, and parent can refresh UI if needed
       if (typeof onPaymentSubmitted === 'function') {
-        await onPaymentSubmitted({ loanId, repaymentId, checkoutUrl: data?.url });
+        await onPaymentSubmitted({
+          loanId,
+          repaymentId,
+          paymentSource,
+          response: data,
+        });
       }
 
-      if (data?.url) {
-        window.location.href = data.url; // redirect to Stripe Checkout
-      } else {
-        throw new Error('No checkout URL returned');
-      }
+      alert('✅ Repayment submitted successfully.');
     } catch (err) {
-      console.error('Start checkout error:', err);
-      alert('⚠️ There was a problem starting checkout. Please try again.');
-      setIsStartingCheckout(false);
+      console.error('Repayment submit error:', err);
+      setError(err.message || 'There was a problem submitting payment.');
+    } finally {
+      setIsPaying(false);
     }
   };
 
   return (
     <div style={{ marginTop: '1rem' }}>
       <h4>Make a Repayment</h4>
+
+      {error && (
+        <div
+          style={{
+            marginBottom: 8,
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#7f1d1d',
+            borderRadius: 8,
+            padding: '8px 10px',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       <p>
         <strong>Due Date:</strong> {new Date(dueDate).toLocaleDateString()}
       </p>
+
       <ul>
         <li>Principal + Interest: ${Number(basePayment).toFixed(2)}</li>
-        <li>Banking Fee (1%): ${Number(bankFee).toFixed(2)}</li>
+        <li>Banking / processing fee: ${displayBankingFee.toFixed(2)}</li>
         <li>
-          PeerFund Fee (1%): ${Number(platformFee).toFixed(2)}{' '}
-          {Number(platformFee) === 0 && <em>(Waived for SuperUsers 💎)</em>}
+          PeerFund Fee: ${displayPeerfundFee.toFixed(2)}{' '}
+          {displayPeerfundFee === 0 && <em>(Waived for SuperUsers 💎)</em>}
         </li>
         <li>
-          <strong>Total Due:</strong> ${totalDue}
+          <strong>Total repayment:</strong> ${totalDue.toFixed(2)}
         </li>
       </ul>
 
-      {/* Amount is locked to what backend will charge via Stripe */}
+      <div style={{ marginTop: 10, marginBottom: 10 }}>
+        <strong>Pay from:</strong>
+
+        <label style={{ marginLeft: 10 }}>
+          <input
+            type="radio"
+            value="wallet"
+            checked={paymentSource === 'wallet'}
+            onChange={() => setPaymentSource('wallet')}
+          />{' '}
+          PeerFund wallet balance
+        </label>
+
+        <label style={{ marginLeft: 10 }}>
+          <input
+            type="radio"
+            value="card"
+            checked={paymentSource === 'card'}
+            onChange={() => setPaymentSource('card')}
+          />{' '}
+          Saved funding card
+        </label>
+      </div>
+
+      {paymentSource === 'card' && (
+        <p style={{ fontSize: 13, color: '#64748b' }}>
+          Card payments may include Stripe processing fees added on top.
+        </p>
+      )}
+
       <label>
-        Amount Charged ($):
-        <input type="number" value={totalDue} readOnly />
+        Amount Applied to Repayment ($):
+        <input type="number" value={totalDue.toFixed(2)} readOnly />
       </label>
+
       <br />
 
       <button
         type="button"
-        onClick={startCheckout}
-        disabled={isStartingCheckout}
+        onClick={submitPayment}
+        disabled={isPaying}
         style={{ marginTop: '0.5rem' }}
       >
-        {isStartingCheckout ? 'Starting checkout…' : 'Pay with Card'}
+        {isPaying ? 'Processing…' : 'Submit Repayment'}
       </button>
     </div>
   );
