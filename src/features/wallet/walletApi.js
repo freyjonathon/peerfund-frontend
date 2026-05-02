@@ -1,17 +1,10 @@
 // src/features/wallet/walletApi.js
 import { apiFetch } from '../../utils/api';
 
-/**
- * GET /api/wallet/me
- */
 export async function fetchWallet() {
   return apiFetch('/api/wallet/me');
 }
 
-/**
- * POST /api/wallet/deposit
- * Body: { amountDollars }
- */
 export async function createDeposit({ amountDollars }) {
   return apiFetch('/api/wallet/deposit', {
     method: 'POST',
@@ -20,10 +13,29 @@ export async function createDeposit({ amountDollars }) {
   });
 }
 
-/**
- * POST /api/wallet/withdraw
- * Body: { amountDollars }
- */
+export async function createAchDeposit({ amountDollars }) {
+  return apiFetch('/api/wallet/deposit-ach', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amountDollars }),
+  });
+}
+
+export async function createBankSetupIntent() {
+  return apiFetch('/api/stripe/create-bank-setup-intent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export async function saveAchPaymentMethod({ paymentMethodId }) {
+  return apiFetch('/api/stripe/save-ach-payment-method', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentMethodId }),
+  });
+}
+
 export async function withdrawFromWallet({ amountDollars }) {
   return apiFetch('/api/wallet/withdraw', {
     method: 'POST',
@@ -32,10 +44,6 @@ export async function withdrawFromWallet({ amountDollars }) {
   });
 }
 
-/**
- * POST /api/stripe/connect-onboarding-link
- * Returns: { url, accountId }
- */
 export async function createConnectOnboardingLink() {
   return apiFetch('/api/stripe/connect-onboarding-link', {
     method: 'POST',
@@ -43,10 +51,6 @@ export async function createConnectOnboardingLink() {
   });
 }
 
-/**
- * GET /api/stripe/connect-account
- * Returns Connect payout setup status
- */
 export async function fetchConnectAccountStatus() {
   return apiFetch('/api/stripe/connect-account');
 }
