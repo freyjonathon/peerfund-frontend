@@ -9,16 +9,6 @@ import {
 } from './walletApi';
 import SaveFundingCard from './SaveFundingCard';
 
-/**
- * Withdraw modal.
- * Backend route: POST /api/wallet/withdraw
- * Body: { amountDollars }
- *
- * Real withdrawal flow:
- * - Requires Stripe Connect payout setup
- * - Transfers funds to connected account
- * - Debits PeerFund wallet
- */
 function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
   const [amount, setAmount] = useState('25.00');
   const [busy, setBusy] = useState(false);
@@ -30,10 +20,8 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
     const raw = (amount || '').replace(/[^0-9.]/g, '');
     const numeric = Number(raw || 0);
     const clampedVal = Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
-
     const exceeds =
       typeof maxDollars === 'number' && clampedVal > maxDollars + 1e-6;
-
     const can = !busy && !setupBusy && clampedVal > 0 && !exceeds;
 
     return { clamped: clampedVal, exceedsBalance: exceeds, canSubmit: can };
@@ -44,7 +32,6 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       const status = await fetchConnectAccountStatus();
       setConnectStatus(status || null);
     } catch (e) {
-      // Non-fatal. Withdraw request will still return exact setup error if needed.
       console.warn('Could not load Connect status:', e);
     }
   }
@@ -59,10 +46,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       setError('');
 
       const data = await createConnectOnboardingLink();
-
-      if (!data?.url) {
-        throw new Error('Could not create Stripe payout setup link.');
-      }
+      if (!data?.url) throw new Error('Could not create Stripe payout setup link.');
 
       window.location.assign(data.url);
     } catch (e) {
@@ -92,7 +76,6 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       setError('');
 
       await withdrawFromWallet({ amountDollars: clamped });
-
       await onBalanceUpdated?.();
     } catch (e) {
       console.error('Withdraw failed:', e);
@@ -113,8 +96,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
   const detailsSubmitted = !!connectStatus?.details_submitted;
 
   const showSetupHint =
-    connectStatus &&
-    (!hasConnectAccount || !detailsSubmitted || !payoutsEnabled);
+    connectStatus && (!hasConnectAccount || !detailsSubmitted || !payoutsEnabled);
 
   return (
     <div className="withdraw-panel">
@@ -127,8 +109,8 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       )}
 
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 8 }}>
-        Withdrawals are sent to your Stripe payout account. You may need to complete payout setup
-        before your first withdrawal.
+        Withdrawals are sent to your Stripe payout account. You may need to complete
+        payout setup before your first withdrawal.
       </p>
 
       {showSetupHint && (
@@ -143,12 +125,12 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
             fontSize: 13,
           }}
         >
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>
-            Payout setup required
-          </div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Payout setup required</div>
           <div>
-            Complete Stripe payout onboarding before withdrawing funds from your PeerFund wallet.
+            Complete Stripe payout onboarding before withdrawing funds from your
+            PeerFund wallet.
           </div>
+
           <button
             type="button"
             onClick={startPayoutSetup}
@@ -275,10 +257,8 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
 export default function WalletPage() {
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [showDepositPanel, setShowDepositPanel] = useState(false);
   const [showWithdrawPanel, setShowWithdrawPanel] = useState(false);
-
   const [error, setError] = useState('');
 
   async function loadWallet() {
@@ -341,7 +321,6 @@ export default function WalletPage() {
         <p>Loading wallet…</p>
       ) : (
         <>
-          {/* Balance card */}
           <div
             style={{
               marginTop: 12,
@@ -401,31 +380,102 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {/* Funding card section – only show when no modal is open */}
           {!anyModalOpen && (
-            <div
-              style={{
-                marginTop: 20,
-                padding: '12px 14px',
-                borderRadius: 12,
-                border: '1px solid #e2e8f0',
-                background: '#ffffff',
-                maxWidth: 420,
-              }}
-            >
-              <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-                Funding card
-              </div>
-              <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                This card is used when you deposit to your PeerFund wallet, repay
-                loans, or pay the SuperUser fee.
-              </p>
+            <>
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  maxWidth: 420,
+                }}
+              >
+                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
+                  Deposit methods
+                </div>
 
-              <SaveFundingCard />
-            </div>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+                  Click <strong>Add funds</strong> to choose between instant card
+                  deposit or lower-fee ACH bank deposit.
+                </p>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 8,
+                    fontSize: 13,
+                    color: '#334155',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <strong>Card deposit:</strong> instant wallet funds, higher
+                    processing fee.
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <strong>ACH bank deposit:</strong> lower fee, goes to pending
+                    first, then available after Stripe confirms settlement.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDepositPanel(true)}
+                  style={{
+                    marginTop: 12,
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                    border: '1px solid #4f46e5',
+                    background: '#4f46e5',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Add funds / Link ACH bank
+                </button>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  maxWidth: 420,
+                }}
+              >
+                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
+                  Funding card
+                </div>
+
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+                  This card is used for instant card deposits, repayments, and
+                  SuperUser fees.
+                </p>
+
+                <SaveFundingCard />
+              </div>
+            </>
           )}
 
-          {/* Add-funds modal */}
           {showDepositPanel && (
             <div
               style={{
@@ -445,7 +495,7 @@ export default function WalletPage() {
                   borderRadius: 16,
                   padding: 20,
                   minWidth: 320,
-                  maxWidth: 420,
+                  maxWidth: 460,
                   boxShadow: '0 20px 40px rgba(15,23,42,0.25)',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -462,7 +512,6 @@ export default function WalletPage() {
             </div>
           )}
 
-          {/* Withdraw modal */}
           {showWithdrawPanel && (
             <div
               style={{
