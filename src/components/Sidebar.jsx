@@ -16,7 +16,6 @@ const Sidebar = ({ user }) => {
       { label: 'Loan Request Form', to: '/create-loan' },
       { label: 'My Money Summary', to: '/money-summary' },
       { label: 'Wallet', to: '/wallet' },
-      { label: 'Payment Method', to: '/payment-method' },
       { label: 'Transaction History', to: '/history' },
       { label: 'Edit Profile', to: '/profile' },
     ];
