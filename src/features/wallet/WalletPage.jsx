@@ -7,7 +7,6 @@ import {
   createConnectOnboardingLink,
   fetchConnectAccountStatus,
 } from './walletApi';
-import SaveFundingCard from './SaveFundingCard';
 
 function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
   const [amount, setAmount] = useState('25.00');
@@ -296,8 +295,6 @@ export default function WalletPage() {
   const availableDollars = (availableCents / 100).toFixed(2);
   const pendingDollars = (pendingCents / 100).toFixed(2);
 
-  const anyModalOpen = showDepositPanel || showWithdrawPanel;
-
   return (
     <div style={{ padding: '2rem' }}>
       <h2>Wallet</h2>
@@ -380,100 +377,76 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {!anyModalOpen && (
-            <>
+          {!showDepositPanel && !showWithdrawPanel && (
+            <div
+              style={{
+                marginTop: 20,
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
+                background: '#ffffff',
+                maxWidth: 420,
+              }}
+            >
+              <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
+                Funding methods
+              </div>
+
+              <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+                Use <strong>Add funds</strong> to save or use a card, link an ACH
+                bank account, and choose how to fund your PeerFund wallet.
+              </p>
+
               <div
                 style={{
-                  marginTop: 20,
-                  padding: '12px 14px',
-                  borderRadius: 12,
-                  border: '1px solid #e2e8f0',
-                  background: '#ffffff',
-                  maxWidth: 420,
+                  display: 'grid',
+                  gap: 8,
+                  fontSize: 13,
+                  color: '#334155',
                 }}
               >
-                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-                  Deposit methods
+                <div
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
+                  <strong>Debit/card:</strong> instant wallet funds, higher
+                  processing fee.
                 </div>
-
-                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                  Click <strong>Add funds</strong> to choose between instant card
-                  deposit or lower-fee ACH bank deposit.
-                </p>
 
                 <div
                   style={{
-                    display: 'grid',
-                    gap: 8,
-                    fontSize: 13,
-                    color: '#334155',
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
                   }}
                 >
-                  <div
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <strong>Card deposit:</strong> instant wallet funds, higher
-                    processing fee.
-                  </div>
-
-                  <div
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <strong>ACH bank deposit:</strong> lower fee, goes to pending
-                    first, then available after Stripe confirms settlement.
-                  </div>
+                  <strong>ACH bank:</strong> lower fee, goes to pending first,
+                  then available after Stripe confirms settlement.
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowDepositPanel(true)}
-                  style={{
-                    marginTop: 12,
-                    padding: '8px 14px',
-                    borderRadius: 999,
-                    border: '1px solid #4f46e5',
-                    background: '#4f46e5',
-                    color: '#fff',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Add funds / Link ACH bank
-                </button>
               </div>
 
-              <div
+              <button
+                type="button"
+                onClick={() => setShowDepositPanel(true)}
                 style={{
-                  marginTop: 20,
-                  padding: '12px 14px',
-                  borderRadius: 12,
-                  border: '1px solid #e2e8f0',
-                  background: '#ffffff',
-                  maxWidth: 420,
+                  marginTop: 12,
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  border: '1px solid #4f46e5',
+                  background: '#4f46e5',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
                 }}
               >
-                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-                  Funding card
-                </div>
-
-                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                  This card is used for instant card deposits, repayments, and
-                  SuperUser fees.
-                </p>
-
-                <SaveFundingCard />
-              </div>
-            </>
+                Manage funding methods
+              </button>
+            </div>
           )}
 
           {showDepositPanel && (
