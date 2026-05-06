@@ -1,10 +1,11 @@
 // src/features/wallet/WalletPanel.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useStripe } from '@stripe/react-stripe-js';
 import {
   createAchDeposit,
   createBankSetupIntent,
   saveAchPaymentMethod,
+  fetchAchPaymentMethod,
 } from './walletApi';
 
 const STRIPE_ACH_PERCENT = 0.008;
@@ -58,8 +59,41 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
   const [amount, setAmount] = useState('25.00');
   const [busy, setBusy] = useState(false);
   const [linkingBank, setLinkingBank] = useState(false);
+  const [loadingAch, setLoadingAch] = useState(true);
   const [error, setError] = useState('');
   const [achReady, setAchReady] = useState(false);
+  const [achMethod, setAchMethod] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAchMethod() {
+      try {
+        setLoadingAch(true);
+        const data = await fetchAchPaymentMethod();
+
+        if (cancelled) return;
+
+        if (data?.hasAch) {
+          setAchReady(true);
+          setAchMethod(data.paymentMethod || null);
+        } else {
+          setAchReady(false);
+          setAchMethod(null);
+        }
+      } catch (e) {
+        console.warn('Could not load ACH payment method:', e);
+      } finally {
+        if (!cancelled) setLoadingAch(false);
+      }
+    }
+
+    loadAchMethod();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const amountDollars = useMemo(() => {
     const raw = (amount || '').replace(/[^0-9.]/g, '');
@@ -73,7 +107,8 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
     [amountDollars]
   );
 
-  const canSubmit = !busy && !linkingBank && amountDollars >= 1 && achReady;
+  const canSubmit =
+    !busy && !linkingBank && !loadingAch && amountDollars >= 1 && achReady;
 
   async function linkBankAccount() {
     if (!stripe) {
@@ -124,9 +159,15 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
         throw new Error('No ACH payment method returned from Stripe.');
       }
 
-      await saveAchPaymentMethod({ paymentMethodId: pmId });
+      const saved = await saveAchPaymentMethod({ paymentMethodId: pmId });
 
       setAchReady(true);
+      setAchMethod({
+        last4: saved?.last4 || null,
+        bankName: saved?.bankName || 'Bank account',
+        accountType: saved?.accountType || null,
+      });
+
       alert('Bank account linked for ACH deposits.');
     } catch (e) {
       console.error('ACH bank link failed:', e);
@@ -154,6 +195,12 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
     }
   }
 
+  const achLabel = achMethod
+    ? `${achMethod.bankName || 'Bank account'}${
+        achMethod.last4 ? ` •••• ${achMethod.last4}` : ''
+      }`
+    : 'Bank account';
+
   return (
     <div className="wallet-panel">
       <h3>Add funds</h3>
@@ -178,7 +225,13 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
         </div>
       )}
 
-      {!achReady && (
+      {loadingAch && (
+        <div style={{ marginTop: 10, fontSize: 13, color: '#64748b' }}>
+          Checking saved ACH bank account…
+        </div>
+      )}
+
+      {!loadingAch && !achReady && (
         <div
           style={{
             marginTop: 10,
@@ -216,7 +269,7 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
         </div>
       )}
 
-      {achReady && (
+      {!loadingAch && achReady && (
         <div
           style={{
             marginTop: 10,
@@ -228,7 +281,29 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             color: '#166534',
           }}
         >
-          ACH bank linked. You can now start a wallet deposit.
+          <strong>ACH bank linked.</strong>
+
+          <div style={{ marginTop: 4 }}>
+            {achLabel} is ready for wallet deposits.
+          </div>
+
+          <button
+            type="button"
+            onClick={linkBankAccount}
+            disabled={linkingBank || !stripe}
+            style={{
+              marginTop: 8,
+              padding: '7px 12px',
+              borderRadius: 999,
+              border: '1px solid #166534',
+              background: '#ffffff',
+              color: '#166534',
+              fontWeight: 700,
+              cursor: linkingBank ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {linkingBank ? 'Linking…' : 'Replace linked bank'}
+          </button>
         </div>
       )}
 
