@@ -151,17 +151,37 @@
 
 @media (max-width: 720px){
   .navbar{
-    grid-template-columns: auto 1fr auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 0 8px;
     gap: 6px;
   }
 
-  .navbar__brand{
-    font-size: 15px;
+  .nav-left{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .nav-center{
+    display:flex;
+    flex: 1;
   }
 
   .nav-right{
+    display:flex;
+    align-items:center;
     gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .navbar__brand{
+    position: static;
+    transform: none;
+    font-size: 15px;
+    white-space: nowrap;
   }
 
   .navbar__bell{

@@ -26,7 +26,7 @@ const Navbar = () => {
 
   return (
     <header className="navbar">
-      {/* Left: Hamburger */}
+      {/* Left: Hamburger + Brand */}
       <div className="nav-left">
         <button
           className="navbar__toggle"
@@ -37,7 +37,14 @@ const Navbar = () => {
           <span className="navbar__toggle-bar" />
           <span className="navbar__toggle-bar" />
         </button>
+
+        <h3 className="navbar__brand" onClick={() => navigate('/dashboard')}>
+          PeerFund
+        </h3>
       </div>
+
+{/* Center spacer */}
+<div className="nav-center" />
 
       {/* Center: Brand */}
       <div className="nav-center">
