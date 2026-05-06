@@ -2,15 +2,10 @@
 import React, { useMemo, useState } from 'react';
 import { useStripe } from '@stripe/react-stripe-js';
 import {
-  createDeposit,
   createAchDeposit,
   createBankSetupIntent,
   saveAchPaymentMethod,
 } from './walletApi';
-
-const STRIPE_CARD_PERCENT = 0.029;
-const STRIPE_CARD_FIXED = 0.30;
-const PEERFUND_DEPOSIT_FEE_RATE = 0.01;
 
 const STRIPE_ACH_PERCENT = 0.008;
 const STRIPE_ACH_MAX_FEE = 5.0;
@@ -20,35 +15,32 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
-function estimateCardGross(netDollars) {
-  const netCents = Math.round(Number(netDollars || 0) * 100);
-  if (!netCents || netCents <= 0) return { net: 0, stripeFee: 0, peerfundFee: 0, totalFees: 0, gross: 0 };
-
-  const fixedCents = Math.round(STRIPE_CARD_FIXED * 100);
-  const totalPercent = STRIPE_CARD_PERCENT + PEERFUND_DEPOSIT_FEE_RATE;
-  const grossCents = Math.ceil((netCents + fixedCents) / (1 - totalPercent));
-  const stripeFeeCents = Math.ceil(grossCents * STRIPE_CARD_PERCENT + fixedCents);
-  const peerfundFeeCents = Math.max(0, grossCents - netCents - stripeFeeCents);
-
-  return {
-    net: netCents / 100,
-    stripeFee: stripeFeeCents / 100,
-    peerfundFee: peerfundFeeCents / 100,
-    totalFees: (grossCents - netCents) / 100,
-    gross: grossCents / 100,
-  };
-}
-
 function estimateAchGross(netDollars) {
   const netCents = Math.round(Number(netDollars || 0) * 100);
-  if (!netCents || netCents <= 0) return { net: 0, stripeFee: 0, peerfundFee: 0, totalFees: 0, gross: 0 };
 
-  const peerfundFeeCents = Math.ceil(netCents * PEERFUND_ACH_DEPOSIT_FEE_RATE);
-  const preliminaryGross = Math.ceil((netCents + peerfundFeeCents) / (1 - STRIPE_ACH_PERCENT));
+  if (!netCents || netCents <= 0) {
+    return {
+      net: 0,
+      stripeFee: 0,
+      peerfundFee: 0,
+      totalFees: 0,
+      gross: 0,
+    };
+  }
+
+  const peerfundFeeCents = Math.ceil(
+    netCents * PEERFUND_ACH_DEPOSIT_FEE_RATE
+  );
+
+  const preliminaryGross = Math.ceil(
+    (netCents + peerfundFeeCents) / (1 - STRIPE_ACH_PERCENT)
+  );
+
   const achFeeCents = Math.min(
     Math.round(STRIPE_ACH_MAX_FEE * 100),
     Math.ceil(preliminaryGross * STRIPE_ACH_PERCENT)
   );
+
   const grossCents = netCents + peerfundFeeCents + achFeeCents;
 
   return {
@@ -64,7 +56,6 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
   const stripe = useStripe();
 
   const [amount, setAmount] = useState('25.00');
-  const [method, setMethod] = useState('card'); // card | ach
   const [busy, setBusy] = useState(false);
   const [linkingBank, setLinkingBank] = useState(false);
   const [error, setError] = useState('');
@@ -77,13 +68,12 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
     return Math.max(1, numeric);
   }, [amount]);
 
-  const feePreview = useMemo(() => {
-    return method === 'ach'
-      ? estimateAchGross(amountDollars)
-      : estimateCardGross(amountDollars);
-  }, [amountDollars, method]);
+  const feePreview = useMemo(
+    () => estimateAchGross(amountDollars),
+    [amountDollars]
+  );
 
-  const canSubmit = !busy && amountDollars >= 1 && (method === 'card' || achReady);
+  const canSubmit = !busy && !linkingBank && amountDollars >= 1 && achReady;
 
   async function linkBankAccount() {
     if (!stripe) {
@@ -115,16 +105,21 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       });
 
       if (collectResult.error) {
-        throw new Error(collectResult.error.message || 'Bank linking was cancelled.');
+        throw new Error(
+          collectResult.error.message || 'Bank linking was cancelled.'
+        );
       }
 
       const confirmResult = await stripe.confirmUsBankAccountSetup(clientSecret);
 
       if (confirmResult.error) {
-        throw new Error(confirmResult.error.message || 'Could not confirm bank setup.');
+        throw new Error(
+          confirmResult.error.message || 'Could not confirm bank setup.'
+        );
       }
 
       const pmId = confirmResult.setupIntent?.payment_method;
+
       if (!pmId) {
         throw new Error('No ACH payment method returned from Stripe.');
       }
@@ -148,16 +143,12 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       setBusy(true);
       setError('');
 
-      if (method === 'ach') {
-        await createAchDeposit({ amountDollars });
-      } else {
-        await createDeposit({ amountDollars });
-      }
+      await createAchDeposit({ amountDollars });
 
       await onBalanceUpdated?.();
     } catch (e) {
-      console.error('Deposit failed:', e);
-      setError(e?.message || 'Deposit failed');
+      console.error('ACH deposit failed:', e);
+      setError(e?.message || 'ACH deposit failed');
     } finally {
       setBusy(false);
     }
@@ -168,7 +159,8 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       <h3>Add funds</h3>
 
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-        Card deposits are instant. ACH deposits have lower fees but stay pending until Stripe confirms settlement.
+        PeerFund currently uses ACH bank funding only. ACH has lower processing
+        fees and deposits show as pending until Stripe confirms settlement.
       </p>
 
       {error && (
@@ -186,31 +178,7 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
         </div>
       )}
 
-      <div style={{ marginTop: 12, display: 'flex', gap: 10, fontSize: 13 }}>
-        <label>
-          <input
-            type="radio"
-            name="deposit-method"
-            value="card"
-            checked={method === 'card'}
-            onChange={() => setMethod('card')}
-          />{' '}
-          Card — instant
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="deposit-method"
-            value="ach"
-            checked={method === 'ach'}
-            onChange={() => setMethod('ach')}
-          />{' '}
-          ACH bank — lower fee, pending
-        </label>
-      </div>
-
-      {method === 'ach' && !achReady && (
+      {!achReady && (
         <div
           style={{
             marginTop: 10,
@@ -223,9 +191,11 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
           }}
         >
           <strong>ACH bank required.</strong>
+
           <div style={{ marginTop: 4 }}>
-            Link a bank account before starting an ACH deposit.
+            Link a bank account before starting a wallet deposit.
           </div>
+
           <button
             type="button"
             onClick={linkBankAccount}
@@ -241,13 +211,30 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
               cursor: linkingBank ? 'not-allowed' : 'pointer',
             }}
           >
-            {linkingBank ? 'Linking…' : 'Link bank account'}
+            {linkingBank ? 'Linking…' : 'Link ACH bank account'}
           </button>
+        </div>
+      )}
+
+      {achReady && (
+        <div
+          style={{
+            marginTop: 10,
+            background: '#ecfdf5',
+            border: '1px solid #bbf7d0',
+            borderRadius: 10,
+            padding: '8px 10px',
+            fontSize: 13,
+            color: '#166534',
+          }}
+        >
+          ACH bank linked. You can now start a wallet deposit.
         </div>
       )}
 
       <div className="row" style={{ marginTop: 12 }}>
         <label>Amount to add to wallet</label>
+
         <div className="input-wrap" style={{ display: 'flex', gap: 6 }}>
           <span
             style={{
@@ -293,19 +280,35 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             fontSize: 14,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span>{method === 'ach' ? 'Pending wallet deposit' : 'Added to wallet'}</span>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 6,
+            }}
+          >
+            <span>Pending wallet deposit</span>
             <strong>{money(feePreview.net)}</strong>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span>
-              Estimated {method === 'ach' ? 'ACH' : 'card'} processing fee
-            </span>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 6,
+            }}
+          >
+            <span>Estimated ACH processing fee</span>
             <span>{money(feePreview.stripeFee)}</span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 6,
+            }}
+          >
             <span>PeerFund deposit fee</span>
             <span>{money(feePreview.peerfundFee)}</span>
           </div>
@@ -324,16 +327,19 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             <span>{money(feePreview.gross)}</span>
           </div>
 
-          {method === 'ach' && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-              ACH deposits will show as pending first and become available after settlement.
-            </div>
-          )}
+          <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+            ACH deposits show as pending first and become available after
+            settlement.
+          </div>
         </div>
       )}
 
       <div className="row right" style={{ marginTop: 16, textAlign: 'right' }}>
-        <button className="btn" onClick={onClose} disabled={busy || linkingBank}>
+        <button
+          className="btn"
+          onClick={onClose}
+          disabled={busy || linkingBank}
+        >
           Cancel
         </button>
 
@@ -352,11 +358,7 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             cursor: canSubmit ? 'pointer' : 'not-allowed',
           }}
         >
-          {busy
-            ? 'Processing…'
-            : method === 'ach'
-            ? `Start ACH ${money(feePreview.gross)}`
-            : `Charge ${money(feePreview.gross)}`}
+          {busy ? 'Processing…' : `Start ACH ${money(feePreview.gross)}`}
         </button>
       </div>
     </div>

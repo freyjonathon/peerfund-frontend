@@ -389,45 +389,47 @@ export default function WalletPage() {
               }}
             >
               <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-                Funding methods
+                ACH bank funding
               </div>
 
               <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                Use <strong>Add funds</strong> to save or use a card, link an ACH
-                bank account, and choose how to fund your PeerFund wallet.
+                PeerFund uses ACH bank transfers for wallet funding and repayments.
+                ACH keeps processing costs lower and allows larger transfer limits.
               </p>
 
               <div
                 style={{
-                  display: 'grid',
-                  gap: 8,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
                   fontSize: 13,
                   color: '#334155',
+                  lineHeight: 1.5,
                 }}
               >
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 10,
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                  }}
-                >
-                  <strong>Debit/card:</strong> instant wallet funds, higher
-                  processing fee.
+                <div style={{ marginBottom: 8 }}>
+                  <strong>How ACH deposits work:</strong>
                 </div>
 
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 10,
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                  }}
-                >
-                  <strong>ACH bank:</strong> lower fee, goes to pending first,
-                  then available after Stripe confirms settlement.
-                </div>
+                <ul style={{ paddingLeft: 18, margin: 0 }}>
+                  <li>
+                    Link your bank account securely through Stripe.
+                  </li>
+
+                  <li>
+                    Deposits first appear as <strong>Pending</strong>.
+                  </li>
+
+                  <li>
+                    Funds automatically move to{" "}
+                    <strong>Available</strong> after ACH settlement.
+                  </li>
+
+                  <li>
+                    Withdrawals are sent back to your Stripe payout account.
+                  </li>
+                </ul>
               </div>
 
               <button
@@ -444,7 +446,7 @@ export default function WalletPage() {
                   cursor: 'pointer',
                 }}
               >
-                Manage funding methods
+                Link bank / Add ACH funds
               </button>
             </div>
           )}
