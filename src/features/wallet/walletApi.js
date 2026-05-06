@@ -54,3 +54,7 @@ export async function createConnectOnboardingLink() {
 export async function fetchConnectAccountStatus() {
   return apiFetch('/api/stripe/connect-account');
 }
+
+export async function fetchAchPaymentMethod() {
+  return apiFetch('/api/stripe/ach-payment-method');
+}
