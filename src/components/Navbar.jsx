@@ -5,6 +5,9 @@ import NotificationBell from './NotificationBell';
 import WalletBadge from '../features/wallet/WalletBadge';
 import './Navbar.css';
 
+// ✅ Add your logo image
+import peerfundLogo from '../assets/peerfund-logo.png';
+
 const Navbar = () => {
   const navigate = useNavigate();
 
@@ -21,13 +24,18 @@ const Navbar = () => {
 
   const toggleSidebar = () => {
     const cur = document.body.getAttribute('data-sidebar');
-    document.body.setAttribute('data-sidebar', cur === 'open' ? 'closed' : 'open');
+    document.body.setAttribute(
+      'data-sidebar',
+      cur === 'open' ? 'closed' : 'open'
+    );
   };
 
   return (
     <header className="navbar">
-      {/* Left: Hamburger + Brand */}
+
+      {/* LEFT */}
       <div className="nav-left">
+
         <button
           className="navbar__toggle"
           aria-label="Toggle sidebar"
@@ -38,26 +46,40 @@ const Navbar = () => {
           <span className="navbar__toggle-bar" />
         </button>
 
-        <h3 className="navbar__brand" onClick={() => navigate('/dashboard')}>
-          PeerFund
-        </h3>
+        {/* ✅ Logo */}
+        <div
+          className="navbar__logo-wrap"
+          onClick={() => navigate('/dashboard')}
+        >
+          <img
+            src={peerfundLogo}
+            alt="PeerFund"
+            className="navbar__logo"
+          />
+        </div>
       </div>
 
-{/* Center spacer */}
-<div className="nav-center" />
+      {/* CENTER SPACER */}
+      <div className="nav-center" />
 
-      {/* Center: Brand */}
-      <div className="nav-center">
-        <h3 className="navbar__brand" onClick={() => navigate('/dashboard')}>
-          PeerFund
-        </h3>
-      </div>
-
-      {/* Right: Notifications, Wallet, Logout */}
+      {/* RIGHT */}
       <div className="nav-right">
-        <div className="navbar__bell"><NotificationBell /></div>
-        <div className="navbar__wallet"><WalletBadge /></div>
-        <button className="navbar__btn" onClick={handleLogout}>Logout</button>
+
+        <div className="navbar__bell">
+          <NotificationBell />
+        </div>
+
+        <div className="navbar__wallet">
+          <WalletBadge />
+        </div>
+
+        <button
+          className="navbar__btn"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
+
       </div>
     </header>
   );

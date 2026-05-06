@@ -57,6 +57,23 @@
   white-space: nowrap;
 }
 
+/* ===== LOGO ===== */
+
+.navbar__logo-wrap{
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  user-select:none;
+}
+
+.navbar__logo{
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  display:block;
+  background: transparent;
+}
+
 .navbar__brand:hover{ opacity: .9; }
 
 .navbar__toggle{
@@ -184,6 +201,10 @@
     white-space: nowrap;
   }
 
+  .navbar__logo{
+    height: 34px;
+   }
+
   .navbar__bell{
     width: 34px;
     min-width: 34px;
@@ -218,6 +239,10 @@
 
   .navbar__brand{
     font-size: 14px;
+  }
+
+  .navbar__logo{
+  height: 34px;
   }
 
   .navbar__wallet{
