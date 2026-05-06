@@ -67,7 +67,7 @@
 }
 
 .navbar__logo{
-  height: 42px;
+  height: 52px;
   width: auto;
   object-fit: contain;
   display:block;
@@ -200,8 +200,8 @@
   }
 
   .navbar__logo{
-    height: 30px;
-    max-width: 118px;
+    height: 36px;
+    max-width: 140px;
     object-fit: contain;
   }
 
@@ -239,8 +239,8 @@
   }
 
   .navbar__logo{
-    height: 28px;
-    max-width: 96px;
+    height: 32px;
+    max-width: 120px;
   }
 
   .navbar__wallet{
