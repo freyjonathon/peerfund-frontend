@@ -58,3 +58,7 @@ export async function fetchConnectAccountStatus() {
 export async function fetchAchPaymentMethod() {
   return apiFetch('/api/stripe/ach-payment-method');
 }
+
+export async function fetchAchPaymentMethod() {
+  return apiFetch('/api/stripe/achPaymentMethod');
+}
