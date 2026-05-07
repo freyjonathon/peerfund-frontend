@@ -64,15 +64,39 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
   const [achReady, setAchReady] = useState(false);
   const [achMethod, setAchMethod] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  async function loadSavedAchMethod() {
+    try {
+      setLoadingAch(true);
+      setError('');
 
-    async function loadAchMethod() {
+      const data = await fetchAchPaymentMethod();
+
+      if (data?.hasAch) {
+        setAchReady(true);
+        setAchMethod(data.paymentMethod || null);
+      } else {
+        setAchReady(false);
+        setAchMethod(null);
+      }
+    } catch (e) {
+      console.warn('Could not load ACH payment method:', e);
+      setAchReady(false);
+      setAchMethod(null);
+      setError(e?.message || 'Could not check saved ACH bank account.');
+    } finally {
+      setLoadingAch(false);
+    }
+  }
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function run() {
       try {
         setLoadingAch(true);
         const data = await fetchAchPaymentMethod();
 
-        if (cancelled) return;
+        if (!mounted) return;
 
         if (data?.hasAch) {
           setAchReady(true);
@@ -83,15 +107,18 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
         }
       } catch (e) {
         console.warn('Could not load ACH payment method:', e);
+        if (!mounted) return;
+        setAchReady(false);
+        setAchMethod(null);
       } finally {
-        if (!cancelled) setLoadingAch(false);
+        if (mounted) setLoadingAch(false);
       }
     }
 
-    loadAchMethod();
+    run();
 
     return () => {
-      cancelled = true;
+      mounted = false;
     };
   }, []);
 
@@ -163,12 +190,13 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
 
       setAchReady(true);
       setAchMethod({
+        id: saved?.id || null,
         last4: saved?.last4 || null,
         bankName: saved?.bankName || 'Bank account',
         accountType: saved?.accountType || null,
       });
 
-      alert('Bank account linked for ACH deposits.');
+      await loadSavedAchMethod();
     } catch (e) {
       console.error('ACH bank link failed:', e);
       setError(e?.message || 'Could not link bank account.');
@@ -199,15 +227,15 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
     ? `${achMethod.bankName || 'Bank account'}${
         achMethod.last4 ? ` •••• ${achMethod.last4}` : ''
       }`
-    : 'Bank account';
+    : 'Saved bank account';
 
   return (
     <div className="wallet-panel">
       <h3>Add funds</h3>
 
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-        PeerFund currently uses ACH bank funding only. ACH has lower processing
-        fees and deposits show as pending until Stripe confirms settlement.
+        PeerFund uses ACH bank funding. Deposits show as pending first, then
+        become available after Stripe confirms settlement.
       </p>
 
       {error && (
@@ -243,10 +271,11 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             color: '#92400e',
           }}
         >
-          <strong>ACH bank required.</strong>
+          <strong>No ACH bank linked yet.</strong>
 
           <div style={{ marginTop: 4 }}>
-            Link a bank account before starting a wallet deposit.
+            Link a bank account once, then future deposits can use the saved
+            bank without linking again.
           </div>
 
           <button
@@ -266,6 +295,25 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
           >
             {linkingBank ? 'Linking…' : 'Link ACH bank account'}
           </button>
+
+          <button
+            type="button"
+            onClick={loadSavedAchMethod}
+            disabled={loadingAch || linkingBank}
+            style={{
+              marginTop: 8,
+              marginLeft: 8,
+              padding: '7px 12px',
+              borderRadius: 999,
+              border: '1px solid #92400e',
+              background: '#ffffff',
+              color: '#92400e',
+              fontWeight: 700,
+              cursor: loadingAch || linkingBank ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Refresh saved bank
+          </button>
         </div>
       )}
 
@@ -281,29 +329,47 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             color: '#166534',
           }}
         >
-          <strong>ACH bank linked.</strong>
+          <strong>ACH bank ready.</strong>
 
           <div style={{ marginTop: 4 }}>
-            {achLabel} is ready for wallet deposits.
+            Deposits will be pulled from <strong>{achLabel}</strong>.
           </div>
 
-          <button
-            type="button"
-            onClick={linkBankAccount}
-            disabled={linkingBank || !stripe}
-            style={{
-              marginTop: 8,
-              padding: '7px 12px',
-              borderRadius: 999,
-              border: '1px solid #166534',
-              background: '#ffffff',
-              color: '#166534',
-              fontWeight: 700,
-              cursor: linkingBank ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {linkingBank ? 'Linking…' : 'Replace linked bank'}
-          </button>
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={linkBankAccount}
+              disabled={linkingBank || !stripe}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 999,
+                border: '1px solid #166534',
+                background: '#ffffff',
+                color: '#166534',
+                fontWeight: 700,
+                cursor: linkingBank ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {linkingBank ? 'Linking…' : 'Replace bank'}
+            </button>
+
+            <button
+              type="button"
+              onClick={loadSavedAchMethod}
+              disabled={loadingAch || linkingBank}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 999,
+                border: '1px solid #166534',
+                background: '#ffffff',
+                color: '#166534',
+                fontWeight: 700,
+                cursor: loadingAch || linkingBank ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Refresh saved bank
+            </button>
+          </div>
         </div>
       )}
 
@@ -433,7 +499,11 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             cursor: canSubmit ? 'pointer' : 'not-allowed',
           }}
         >
-          {busy ? 'Processing…' : `Start ACH ${money(feePreview.gross)}`}
+          {busy
+            ? 'Processing…'
+            : achReady
+            ? `Deposit from saved bank ${money(feePreview.gross)}`
+            : 'Link ACH bank first'}
         </button>
       </div>
     </div>
