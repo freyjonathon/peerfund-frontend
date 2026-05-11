@@ -67,68 +67,6 @@ function sortLoansWithPaidOffLast(list) {
   });
 }
 
-/* ------------------------- Small inline modal ------------------------- */
-
-function LinkBankFirstModal({ open, onClose }) {
-  if (!open) return null;
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.35)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: 520,
-          background: '#fff',
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
-          padding: 20,
-        }}
-      >
-        <h3 style={{ margin: 0 }}>Save a funding card in your Wallet</h3>
-            <p style={{ color: '#334155', marginTop: 8 }}>
-              Before you can accept an offer, please save a funding card in your Wallet.
-              This card will be used for future repayments.
-        </p>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            justifyContent: 'flex-end',
-            marginTop: 14,
-          }}
-        >
-          <button className="action-btn sm" onClick={onClose}>
-            Close
-          </button>
-          <button
-            className="action-btn sm primary"
-            onClick={() => {
-              window.location.assign('/wallet');
-            }}
-          >
-            Go to Wallet
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------- Open request row ------------------------- */
 
 function OpenRequestRow({
@@ -256,23 +194,6 @@ export default function MoneySummary() {
   const [offersLoading, setOffersLoading] = useState({});
   const [offerWorking, setOfferWorking] = useState({});
   const [offerModalLoanId, setOfferModalLoanId] = useState(null);
-
-  // cached: does borrower have a payment method for loan funding
-  const [hasLoanPM, setHasLoanPM] = useState(null); // null=unknown, true/false known
-  const [showLinkModal, setShowLinkModal] = useState(false);
-
-  const checkHasLoanPaymentMethod = useCallback(async () => {
-  if (hasLoanPM !== null) return hasLoanPM;
-    try {
-    const d = await apiFetch('/api/billing/has-loan-payment-method');
-    const val = !!d?.hasLoanPaymentMethod;
-    setHasLoanPM(val);
-    return val;
-  } catch (err) {
-    setHasLoanPM(false);
-    return false;
-  }
-    }, [hasLoanPM]);
 
   /* ------------------ Fetch helpers (market + direct) ------------------ */
 
@@ -496,15 +417,7 @@ export default function MoneySummary() {
     setOfferWorking((m) => ({ ...m, [offer.id]: true }));
 
     try {
-      // 1) Optional: ensure borrower has payout method on file
-      const ok = await checkHasLoanPaymentMethod();
-      if (!ok) {
-        setShowLinkModal(true);
-        setOfferWorking((m) => ({ ...m, [offer.id]: false }));
-        return;
-      }
-
-      // 2) Accept the offer -> server creates the Loan (status: ACCEPTED)
+      // 1) Accept the offer -> server creates the Loan (status: ACCEPTED)
       const data = await apiFetch(`/api/loans/offers/${offer.id}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -516,7 +429,7 @@ export default function MoneySummary() {
 
       console.log('✅ Offer accepted response:', data);
 
-      // 3) Just refresh the summary; funding is done later by the lender
+      // 2) Just refresh the summary; funding is done later by the lender
       await fetchSummary();
       alert(
         'Loan accepted and contract saved. Waiting for lender to fund from their PeerFund wallet.'
@@ -908,7 +821,6 @@ export default function MoneySummary() {
         <OfferModal loanId={offerModalLoanId} onClose={() => setOfferModalLoanId(null)} />
       )}
 
-      <LinkBankFirstModal open={showLinkModal} onClose={() => setShowLinkModal(false)} />
     </div>
   );
 }
