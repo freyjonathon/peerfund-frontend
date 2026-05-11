@@ -18,7 +18,6 @@ const LoanDetails = () => {
   const [showRepaymentForm, setShowRepaymentForm] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [showContractModal, setShowContractModal] = useState(false);
-  const [hasLoanBank, setHasLoanBank] = useState(false);
 
   const [expandedOffer, setExpandedOffer] = useState({});
   const [offerForm, setOfferForm] = useState({
@@ -94,24 +93,7 @@ const LoanDetails = () => {
       const data = await res.json();
       setLoan(data);
       setMessages(data.messages || []);
-
-      // If I am the borrower, check if I already have a loan funding payment method
-      if (data.borrower?.id === userId) {
-        try {
-          const pmRes = await fetch('/api/billing/has-loan-payment-method', {
-            headers: { Authorization: `Bearer ${token}` },
-            });
-          if (pmRes.ok) {
-            const pmData = await pmRes.json();
-            setHasLoanBank(!!pmData.hasLoanPaymentMethod);
-          } else {
-            setHasLoanBank(false);
-          }
-        } catch (err) {
-          console.warn('Error checking loan payment method:', err);
-          setHasLoanBank(false);
-        }
-      }
+      
     } catch (err) {
       console.error('Error fetching loan details:', err);
     }
@@ -472,39 +454,6 @@ const LoanDetails = () => {
         })
       ) : (
         <p>No offers yet.</p>
-      )}
-
-      {/* Borrower: link bank for receiving funds */}
-      {statusUpper === 'ACCEPTED' && iAmBorrower && !hasLoanBank && (
-        <div
-          style={{
-            marginTop: '2rem',
-            padding: '1rem',
-            border: '1px solid #e2e8f0',
-            borderRadius: 10,
-            background: '#f8fafc',
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Before you accept or repay loans…</h3>
-          <p style={{ color: '#334155' }}>
-            Please save a funding card in your Wallet. This card will be used for future repayments.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/wallet')}
-            style={{
-              background: '#4f46e5',
-              border: '1px solid #4f46e5',
-              color: '#fff',
-              fontWeight: 700,
-              padding: '8px 12px',
-              borderRadius: 10,
-              cursor: 'pointer',
-            }}
-          >
-            Go to Wallet
-          </button>
-        </div>
       )}
 
       {/* Repayment section (borrower) */}
