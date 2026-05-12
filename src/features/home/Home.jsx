@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
-import peerfundGlobe from '../assets/PeerFundGlobe.png';
+import peerfundGlobe from '../../assets/PeerFundGlobe.png';
 
 export default function Home() {
   const navigate = useNavigate();
