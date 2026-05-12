@@ -36,46 +36,54 @@ const Navbar = () => {
     <header className="navbar">
 
       {/* LEFT */}
-      <div className="nav-left">
+      <div
+        className="nav-left"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+        }}
+      >
 
+        {/* Globe = Sidebar Toggle */}
         <button
-          className="navbar__toggle"
-          aria-label="Toggle sidebar"
           onClick={toggleSidebar}
-        >
-          <span className="navbar__toggle-bar" />
-          <span className="navbar__toggle-bar" />
-          <span className="navbar__toggle-bar" />
-        </button>
-
-        {/* ✅ New PeerFund Branding */}
-        <div
-          className="navbar__brand"
-          onClick={() => navigate('/dashboard')}
+          aria-label="Toggle sidebar"
           style={{
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            cursor: 'pointer',
+            justifyContent: 'center',
           }}
         >
-          {/* Globe icon */}
           <img
             src={peerfundGlobe}
-            alt="PeerFund Globe"
+            alt="PeerFund Menu"
             style={{
-              width: '42px',
-              height: '42px',
+              width: '52px',
+              height: '52px',
               objectFit: 'contain',
             }}
           />
+        </button>
 
-          {/* Wordmark */}
+        {/* Wordmark */}
+        <div
+          onClick={() => navigate('/dashboard')}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
           <img
             src={peerfundWordmark}
             alt="PeerFund"
             style={{
-              height: '26px',
+              height: '28px',
               width: 'auto',
               objectFit: 'contain',
             }}
