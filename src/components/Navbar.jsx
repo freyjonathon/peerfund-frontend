@@ -6,7 +6,6 @@ import WalletBadge from '../features/wallet/WalletBadge';
 import './Navbar.css';
 
 // ✅ New logo assets
-import peerfundWordmark from '../assets/PeerFund.png';
 import peerfundGlobe from '../assets/PeerFundGlobe.png';
 
 const Navbar = () => {
@@ -71,24 +70,28 @@ const Navbar = () => {
         </button>
 
         {/* Wordmark */}
-        <div
-          onClick={() => navigate('/dashboard')}
-          style={{
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <img
-            src={peerfundWordmark}
-            alt="PeerFund"
+        {/* PeerFund Text */}
+          <div
+            onClick={() => navigate('/dashboard')}
             style={{
-              height: '28px',
-              width: 'auto',
-              objectFit: 'contain',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '2rem',
+              fontWeight: 900,
+              letterSpacing: '-1px',
+              lineHeight: 1,
+              userSelect: 'none',
             }}
-          />
-        </div>
+          >
+            <span style={{ color: '#0A4FB5' }}>
+              PEER
+            </span>
+
+            <span style={{ color: '#9AD122' }}>
+              FUND
+            </span>
+          </div>
       </div>
 
       {/* CENTER SPACER */}
