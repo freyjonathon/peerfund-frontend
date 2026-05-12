@@ -77,6 +77,9 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/loan/:loanId/repayments" element={<RepaymentTracker />} />
       <Route path="/transaction-history" element={<TransactionHistory />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/how-it-works" element={<HowItWorks />} />
+      <Route path="/contact" element={<Contact />} />
 
       {/* ---------------- Verification page (USER flow) ---------------- */}
       <Route
@@ -119,9 +122,6 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<UserProfile />} />
 
-        <Route path="/about" element={<About />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/contact" element={<Contact />} />
         {/* Loan Features */}
         <Route path="/create-loan" element={<CreateLoan />} />
         <Route path="/loan-marketplace" element={<LoanMarketplace />} />
