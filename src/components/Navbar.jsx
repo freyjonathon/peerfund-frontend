@@ -1,15 +1,15 @@
 // src/components/Navbar.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import WalletBadge from '../features/wallet/WalletBadge';
 import './Navbar.css';
 
-// ✅ New logo assets
 import peerfundGlobe from '../assets/PeerFundGlobe.png';
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!document.body.getAttribute('data-sidebar')) {
@@ -24,7 +24,6 @@ const Navbar = () => {
 
   const toggleSidebar = () => {
     const cur = document.body.getAttribute('data-sidebar');
-
     document.body.setAttribute(
       'data-sidebar',
       cur === 'open' ? 'closed' : 'open'
@@ -33,88 +32,51 @@ const Navbar = () => {
 
   return (
     <header className="navbar">
-
-      {/* LEFT */}
-      <div
-        className="nav-left"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-        }}
-      >
-
-        {/* Globe = Sidebar Toggle */}
+      <div className="nav-left">
         <button
-          onClick={toggleSidebar}
+          className="navbar__globe-btn"
           aria-label="Toggle sidebar"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          onClick={toggleSidebar}
         >
-          <img
-            src={peerfundGlobe}
-            alt="PeerFund Menu"
-            style={{
-              width: '52px',
-              height: '52px',
-              objectFit: 'contain',
-            }}
-          />
+          <img src={peerfundGlobe} alt="PeerFund menu" className="navbar__globe" />
         </button>
 
-        {/* Wordmark */}
-        {/* PeerFund Text */}
-          <div
-            onClick={() => navigate('/dashboard')}
-            style={{
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '2rem',
-              fontWeight: 900,
-              letterSpacing: '-1px',
-              lineHeight: 1,
-              userSelect: 'none',
-            }}
-          >
-            <span style={{ color: '#0A4FB5' }}>
-              PEER
-            </span>
-
-            <span style={{ color: '#9AD122' }}>
-              FUND
-            </span>
-          </div>
+        <div className="navbar__text-logo" onClick={() => navigate('/dashboard')}>
+          <span className="navbar__text-logo-blue">PEER</span>
+          <span className="navbar__text-logo-green">FUND</span>
+        </div>
       </div>
 
-      {/* CENTER SPACER */}
       <div className="nav-center" />
 
-      {/* RIGHT */}
       <div className="nav-right">
-
-        <div className="navbar__bell">
-          <NotificationBell />
-        </div>
-
         <div className="navbar__wallet">
           <WalletBadge />
         </div>
 
-        <button
-          className="navbar__btn"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+        <div className="navbar__menu-wrap">
+          <button
+            className="navbar__menu-btn"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-label="Open account menu"
+          >
+            Menu ▾
+          </button>
 
+          {menuOpen && (
+            <div className="navbar__dropdown">
+              <div className="navbar__dropdown-item">
+                <NotificationBell />
+                <span>Notifications</span>
+              </div>
+
+              <button className="navbar__dropdown-btn" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
