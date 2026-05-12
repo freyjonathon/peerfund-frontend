@@ -3,17 +3,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 
-const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, ''); // set this in Vercel
+const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 async function safeJson(res) {
   const contentType = res.headers.get('content-type') || '';
   const text = await res.text();
 
-  // Helpful error detail even when backend returns HTML
   if (!res.ok) {
-    throw new Error(
-      `HTTP ${res.status} ${res.statusText}: ${text.slice(0, 200)}`
-    );
+    throw new Error(`HTTP ${res.status} ${res.statusText}: ${text.slice(0, 200)}`);
   }
 
   if (!contentType.includes('application/json')) {
@@ -25,6 +22,87 @@ async function safeJson(res) {
   return JSON.parse(text);
 }
 
+const moneyFromCents = (cents) => `$${((Number(cents) || 0) / 100).toFixed(2)}`;
+
+const moneyFromTx = (tx) => {
+  if (typeof tx.amountCents === 'number') return moneyFromCents(tx.amountCents);
+  return `$${Number(tx.amount || 0).toFixed(2)}`;
+};
+
+const displayDate = (tx) => {
+  const raw = tx.createdAt || tx.timestamp || tx.processedAt || tx.date;
+  return raw ? new Date(raw).toLocaleString() : '—';
+};
+
+const displayUser = (user) => {
+  if (!user) return '—';
+  return user.name || user.email || `User …${String(user.id || '').slice(-6)}`;
+};
+
+const displaySource = (tx) => tx.source || 'Transaction';
+
+const displayType = (tx) => {
+  const type = String(tx.type || '').toUpperCase();
+
+  switch (type) {
+    case 'DEPOSIT':
+    case 'WALLET_DEPOSIT':
+      return 'Wallet Deposit';
+    case 'WITHDRAWAL':
+    case 'WALLET_WITHDRAWAL':
+      return 'Wallet Withdrawal';
+    case 'DISBURSE':
+    case 'DISBURSEMENT':
+      return 'Loan Disbursement';
+    case 'REPAYMENT':
+      return 'Loan Repayment';
+    case 'SUPERUSER_FEE':
+      return 'SuperUser Fee';
+    case 'BANK_FEE':
+    case 'BANKING_FEE':
+    case 'STRIPE_FEE':
+      return 'Bank/Stripe Fee';
+    case 'PLATFORM_FEE':
+    case 'PEERFUND_FEE':
+      return 'PeerFund Fee';
+    default:
+      return tx.type || 'Other';
+  }
+};
+
+const displayFrom = (tx) => {
+  if (tx.source === 'WalletLedger') {
+    if (tx.direction === 'DEBIT') return displayUser(tx.user);
+    if (tx.direction === 'CREDIT') return 'External / Platform';
+    return displayUser(tx.user);
+  }
+
+  return displayUser(tx.fromUser);
+};
+
+const displayTo = (tx) => {
+  if (tx.source === 'WalletLedger') {
+    if (tx.direction === 'CREDIT') return displayUser(tx.user);
+    if (tx.direction === 'DEBIT') return 'External / Platform';
+    return displayUser(tx.user);
+  }
+
+  return displayUser(tx.toUser);
+};
+
+const displayReference = (tx) => {
+  if (tx.loanId) return `Loan …${String(tx.loanId).slice(-6)}`;
+  if (tx.referenceId) return `${tx.referenceType || 'Ref'} …${String(tx.referenceId).slice(-6)}`;
+  if (tx.repaymentId) return `Repayment …${String(tx.repaymentId).slice(-6)}`;
+  if (tx.id) return `Tx …${String(tx.id).slice(-6)}`;
+  return '—';
+};
+
+const displayBalanceAfter = (tx) => {
+  if (typeof tx.balanceAfterCents === 'number') return moneyFromCents(tx.balanceAfterCents);
+  return '—';
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
@@ -35,18 +113,20 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [pendingVerifications, setPendingVerifications] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [transactionStats, setTransactionStats] = useState({
+    count: 0,
+    transactionCount: 0,
+    walletLedgerCount: 0,
+  });
 
-  const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const authHeaders = useMemo(
     () => (token ? { Authorization: `Bearer ${token}` } : {}),
     [token]
   );
 
-  const apiUrl = (path) => `${API_BASE}${path}`; // if API_BASE is empty, it stays relative
-
-  /* ------------------------ Loaders ------------------------ */
+  const apiUrl = (path) => `${API_BASE}${path}`;
 
   const loadUsers = async () => {
     try {
@@ -91,12 +171,20 @@ const AdminDashboard = () => {
       setError('');
       setLoading(true);
 
-      const res = await fetch(apiUrl('/api/admin/transactions'), {
+      const res = await fetch(apiUrl('/api/admin/transactions?limit=500'), {
         headers: authHeaders,
       });
 
       const data = await safeJson(res);
-      setTransactions(Array.isArray(data) ? data : data.transactions || []);
+      const rows = Array.isArray(data) ? data : data.transactions || [];
+
+      setTransactions(rows);
+      setTransactionStats({
+        count: data.count ?? rows.length,
+        transactionCount: data.transactionCount ?? rows.filter((t) => t.source === 'Transaction').length,
+        walletLedgerCount:
+          data.walletLedgerCount ?? rows.filter((t) => t.source === 'WalletLedger').length,
+      });
     } catch (e) {
       console.error('loadTransactions error:', e);
       setError(e.message || 'Failed to load transactions');
@@ -111,8 +199,6 @@ const AdminDashboard = () => {
     loadPendingVerifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
-
-  /* -------------------- Verification actions -------------------- */
 
   const handleApprove = async (userId) => {
     if (!window.confirm('Approve this user for full access?')) return;
@@ -129,12 +215,12 @@ const AdminDashboard = () => {
         },
       });
 
-      // don’t assume JSON here; safeJson will handle it
       await safeJson(res).catch(() => ({}));
 
       setPendingVerifications((prev) =>
         prev.filter((v) => v.userId !== userId && v.id !== userId)
       );
+
       await loadUsers();
     } catch (e) {
       console.error('handleApprove error:', e);
@@ -164,6 +250,7 @@ const AdminDashboard = () => {
       setPendingVerifications((prev) =>
         prev.filter((v) => v.userId !== userId && v.id !== userId)
       );
+
       await loadUsers();
     } catch (e) {
       console.error('handleReject error:', e);
@@ -173,14 +260,13 @@ const AdminDashboard = () => {
     }
   };
 
-  /* ------------------------ Render helpers ------------------------ */
-
   const renderUsersTab = () => (
     <div className="admin-card">
       <h2>All users</h2>
       <p style={{ marginBottom: 12, color: '#64748b' }}>
         Quick overview of users, roles, SuperUser status, and verification status.
       </p>
+
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
@@ -193,6 +279,7 @@ const AdminDashboard = () => {
               <th>Verification</th>
             </tr>
           </thead>
+
           <tbody>
             {users.length === 0 ? (
               <tr>
@@ -224,6 +311,7 @@ const AdminDashboard = () => {
       <p style={{ marginBottom: 12, color: '#64748b' }}>
         Review ID front/back and selfie uploads, then approve or reject.
       </p>
+
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
@@ -239,6 +327,7 @@ const AdminDashboard = () => {
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {pendingVerifications.length === 0 ? (
               <tr>
@@ -300,36 +389,59 @@ const AdminDashboard = () => {
 
   const renderTransactionsTab = () => (
     <div className="admin-card">
-      <h2>Platform transactions</h2>
-      <p style={{ marginBottom: 12, color: '#64748b' }}>
-        High-level view of PeerFund fees, bank fees, and SuperUser subscriptions.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+        <div>
+          <h2>Platform transactions</h2>
+          <p style={{ marginBottom: 12, color: '#64748b' }}>
+            Platform-wide view of wallet deposits, withdrawals, disbursements, fees, repayments,
+            and internal wallet ledger activity.
+          </p>
+          <p style={{ marginBottom: 12, color: '#64748b', fontSize: 14 }}>
+            Showing {transactionStats.count} rows — {transactionStats.transactionCount} transaction rows
+            and {transactionStats.walletLedgerCount} wallet ledger rows.
+          </p>
+        </div>
+
+        <button className="admin-btn" type="button" onClick={loadTransactions}>
+          Refresh
+        </button>
+      </div>
+
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
             <tr>
               <th>Date</th>
+              <th>Source</th>
               <th>Type</th>
               <th>Amount</th>
               <th>From</th>
               <th>To</th>
+              <th>Direction</th>
+              <th>Balance After</th>
+              <th>Reference</th>
             </tr>
           </thead>
+
           <tbody>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: 16 }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: 16 }}>
                   No platform transactions yet.
                 </td>
               </tr>
             ) : (
               transactions.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.timestamp ? new Date(t.timestamp).toLocaleString() : '—'}</td>
-                  <td>{t.type}</td>
-                  <td>${Number(t.amount || 0).toFixed(2)}</td>
-                  <td>{t.fromUser?.name || '—'}</td>
-                  <td>{t.toUser?.name || '—'}</td>
+                <tr key={`${t.source || 'Transaction'}-${t.id}`}>
+                  <td>{displayDate(t)}</td>
+                  <td>{displaySource(t)}</td>
+                  <td>{displayType(t)}</td>
+                  <td>{moneyFromTx(t)}</td>
+                  <td>{displayFrom(t)}</td>
+                  <td>{displayTo(t)}</td>
+                  <td>{t.direction || '—'}</td>
+                  <td>{displayBalanceAfter(t)}</td>
+                  <td>{displayReference(t)}</td>
                 </tr>
               ))
             )}
@@ -338,8 +450,6 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
-
-  /* --------------------------- Render --------------------------- */
 
   return (
     <div className="admin-shell">
@@ -364,6 +474,7 @@ const AdminDashboard = () => {
         >
           Users
         </button>
+
         <button
           className={`admin-tab ${activeTab === 'verifications' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('verifications')}
@@ -371,6 +482,7 @@ const AdminDashboard = () => {
         >
           Verifications
         </button>
+
         <button
           className={`admin-tab ${activeTab === 'transactions' ? 'is-active' : ''}`}
           onClick={() => {
