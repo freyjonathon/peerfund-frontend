@@ -222,3 +222,64 @@
   /* existing gradient … */
   opacity: .65;               /* try .55–.70 range */
 }
+
+.hero__brand-logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border:0;
+  background:transparent;
+  padding:0;
+  cursor:pointer;
+}
+
+.hero__brand-globe{
+  width:54px;
+  height:54px;
+  object-fit:contain;
+  display:block;
+}
+
+.hero__brand-word{
+  font-weight:900;
+  font-size:1.6rem;
+  letter-spacing:-0.04em;
+  line-height:1;
+}
+
+.hero__brand-blue{
+  color:#0A4FB5;
+}
+
+.hero__brand-green{
+  color:#9AD122;
+}
+
+.hero__logo-showcase{
+  display:flex;
+  justify-content:center;
+  margin-bottom:18px;
+}
+
+.hero__logo-large{
+  width:150px;
+  height:150px;
+  object-fit:contain;
+  filter: drop-shadow(0 18px 35px rgba(15, 23, 42, 0.18));
+}
+
+@media (max-width: 720px){
+  .hero__brand-globe{
+    width:42px;
+    height:42px;
+  }
+
+  .hero__brand-word{
+    font-size:1.25rem;
+  }
+
+  .hero__logo-large{
+    width:112px;
+    height:112px;
+  }
+}
