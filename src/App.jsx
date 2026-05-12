@@ -12,6 +12,9 @@ import Home from './features/home/Home';
 import SignUp from './features/auth/SignUp';
 import Login from './features/auth/Login';
 import PrivateRoute from './features/auth/PrivateRoute';
+import About from './features/home/About';
+import HowItWorks from './features/home/HowItWorks';
+import Contact from './features/home/Contact';
 
 import Dashboard from './features/dashboard/Dashboard';
 import Documents from './features/dashboard/Documents';
@@ -116,6 +119,9 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<UserProfile />} />
 
+        <Route path="/about" element={<About />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/contact" element={<Contact />} />
         {/* Loan Features */}
         <Route path="/create-loan" element={<CreateLoan />} />
         <Route path="/loan-marketplace" element={<LoanMarketplace />} />
