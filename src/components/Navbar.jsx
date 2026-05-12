@@ -5,8 +5,9 @@ import NotificationBell from './NotificationBell';
 import WalletBadge from '../features/wallet/WalletBadge';
 import './Navbar.css';
 
-// ✅ Add your logo image
-import peerfundLogo from '../assets/peerfund-logo.png';
+// ✅ New logo assets
+import peerfundWordmark from '../assets/PeerFund.png';
+import peerfundGlobe from '../assets/PeerFundGlobe.png';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Navbar = () => {
 
   const toggleSidebar = () => {
     const cur = document.body.getAttribute('data-sidebar');
+
     document.body.setAttribute(
       'data-sidebar',
       cur === 'open' ? 'closed' : 'open'
@@ -46,15 +48,37 @@ const Navbar = () => {
           <span className="navbar__toggle-bar" />
         </button>
 
-        {/* ✅ Logo */}
+        {/* ✅ New PeerFund Branding */}
         <div
-          className="navbar__logo-wrap"
+          className="navbar__brand"
           onClick={() => navigate('/dashboard')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            cursor: 'pointer',
+          }}
         >
+          {/* Globe icon */}
           <img
-            src={peerfundLogo}
+            src={peerfundGlobe}
+            alt="PeerFund Globe"
+            style={{
+              width: '42px',
+              height: '42px',
+              objectFit: 'contain',
+            }}
+          />
+
+          {/* Wordmark */}
+          <img
+            src={peerfundWordmark}
             alt="PeerFund"
-            className="navbar__logo"
+            style={{
+              height: '26px',
+              width: 'auto',
+              objectFit: 'contain',
+            }}
           />
         </div>
       </div>
