@@ -265,8 +265,8 @@
 }
 
 .navbar__globe{
-  width: 84px;
-  height: 84px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
   display:block;
 }
