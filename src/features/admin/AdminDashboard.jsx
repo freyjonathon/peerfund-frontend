@@ -15,7 +15,10 @@ async function safeJson(res) {
 
   if (!contentType.includes('application/json')) {
     throw new Error(
-      `Expected JSON but got "${contentType || 'unknown'}". Response starts with: ${text.slice(0, 120)}`
+      `Expected JSON but got "${contentType || 'unknown'}". Response starts with: ${text.slice(
+        0,
+        120
+      )}`
     );
   }
 
@@ -39,6 +42,8 @@ const displayUser = (user) => {
   return user.name || user.email || `User …${String(user.id || '').slice(-6)}`;
 };
 
+const getLedgerUser = (tx) => tx.user || tx.wallet?.user || null;
+
 const displaySource = (tx) => tx.source || 'Transaction';
 
 const displayType = (tx) => {
@@ -48,46 +53,104 @@ const displayType = (tx) => {
     case 'DEPOSIT':
     case 'WALLET_DEPOSIT':
       return 'Wallet Deposit';
+
     case 'WITHDRAWAL':
     case 'WALLET_WITHDRAWAL':
       return 'Wallet Withdrawal';
+
     case 'DISBURSE':
     case 'DISBURSEMENT':
       return 'Loan Disbursement';
+
     case 'REPAYMENT':
       return 'Loan Repayment';
+
     case 'SUPERUSER_FEE':
       return 'SuperUser Fee';
+
     case 'BANK_FEE':
     case 'BANKING_FEE':
     case 'STRIPE_FEE':
       return 'Bank/Stripe Fee';
+
     case 'PLATFORM_FEE':
     case 'PEERFUND_FEE':
       return 'PeerFund Fee';
+
     default:
       return tx.type || 'Other';
   }
 };
 
 const displayFrom = (tx) => {
-  if (tx.source === 'WalletLedger') {
-    if (tx.direction === 'DEBIT') return displayUser(tx.user);
-    if (tx.direction === 'CREDIT') return 'External / Platform';
-    return displayUser(tx.user);
+  const source = String(tx.source || '').toUpperCase();
+  const direction = String(tx.direction || '').toUpperCase();
+
+  if (source === 'WALLETLEDGER') {
+    const user = getLedgerUser(tx);
+
+    if (direction === 'DEBIT') return displayUser(user);
+
+    if (direction === 'CREDIT') {
+      const type = String(tx.type || '').toUpperCase();
+
+      if (type === 'DISBURSE' || type === 'DISBURSEMENT') {
+        return tx.metadata?.lenderName || tx.metadata?.fromUserName || 'Lender wallet';
+      }
+
+      if (type === 'DEPOSIT' || type === 'WALLET_DEPOSIT') {
+        return 'External bank / Stripe';
+      }
+
+      return 'External / Platform';
+    }
+
+    return displayUser(user);
   }
 
   return displayUser(tx.fromUser);
 };
 
 const displayTo = (tx) => {
-  if (tx.source === 'WalletLedger') {
-    if (tx.direction === 'CREDIT') return displayUser(tx.user);
-    if (tx.direction === 'DEBIT') return 'External / Platform';
-    return displayUser(tx.user);
+  const source = String(tx.source || '').toUpperCase();
+  const direction = String(tx.direction || '').toUpperCase();
+
+  if (source === 'WALLETLEDGER') {
+    const user = getLedgerUser(tx);
+
+    if (direction === 'CREDIT') return displayUser(user);
+
+    if (direction === 'DEBIT') {
+      const type = String(tx.type || '').toUpperCase();
+
+      if (type === 'DISBURSE' || type === 'DISBURSEMENT') {
+        return tx.metadata?.borrowerName || tx.metadata?.toUserName || 'Borrower wallet';
+      }
+
+      if (type === 'WITHDRAWAL' || type === 'WALLET_WITHDRAWAL') {
+        return 'External bank / Stripe';
+      }
+
+      return 'External / Platform';
+    }
+
+    return displayUser(user);
   }
 
   return displayUser(tx.toUser);
+};
+
+const displayDirection = (tx) => {
+  const direction = String(tx.direction || '').toUpperCase();
+
+  if (direction === 'CREDIT') return 'Credit';
+  if (direction === 'DEBIT') return 'Debit';
+
+  if (tx.fromUser || tx.toUser) {
+    return `${displayUser(tx.fromUser)} → ${displayUser(tx.toUser)}`;
+  }
+
+  return '—';
 };
 
 const displayReference = (tx) => {
@@ -181,7 +244,8 @@ const AdminDashboard = () => {
       setTransactions(rows);
       setTransactionStats({
         count: data.count ?? rows.length,
-        transactionCount: data.transactionCount ?? rows.filter((t) => t.source === 'Transaction').length,
+        transactionCount:
+          data.transactionCount ?? rows.filter((t) => t.source === 'Transaction').length,
         walletLedgerCount:
           data.walletLedgerCount ?? rows.filter((t) => t.source === 'WalletLedger').length,
       });
@@ -365,7 +429,11 @@ const AdminDashboard = () => {
                       </button>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button className="admin-btn" type="button" onClick={() => handleApprove(userId)}>
+                      <button
+                        className="admin-btn"
+                        type="button"
+                        onClick={() => handleApprove(userId)}
+                      >
                         Approve
                       </button>
                       <button
@@ -389,7 +457,14 @@ const AdminDashboard = () => {
 
   const renderTransactionsTab = () => (
     <div className="admin-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          alignItems: 'flex-start',
+        }}
+      >
         <div>
           <h2>Platform transactions</h2>
           <p style={{ marginBottom: 12, color: '#64748b' }}>
@@ -397,8 +472,8 @@ const AdminDashboard = () => {
             and internal wallet ledger activity.
           </p>
           <p style={{ marginBottom: 12, color: '#64748b', fontSize: 14 }}>
-            Showing {transactionStats.count} rows — {transactionStats.transactionCount} transaction rows
-            and {transactionStats.walletLedgerCount} wallet ledger rows.
+            Showing {transactionStats.count} rows — {transactionStats.transactionCount} transaction
+            rows and {transactionStats.walletLedgerCount} wallet ledger rows.
           </p>
         </div>
 
@@ -439,7 +514,7 @@ const AdminDashboard = () => {
                   <td>{moneyFromTx(t)}</td>
                   <td>{displayFrom(t)}</td>
                   <td>{displayTo(t)}</td>
-                  <td>{t.direction || '—'}</td>
+                  <td>{displayDirection(t)}</td>
                   <td>{displayBalanceAfter(t)}</td>
                   <td>{displayReference(t)}</td>
                 </tr>
@@ -454,7 +529,14 @@ const AdminDashboard = () => {
   return (
     <div className="admin-shell">
       <header className="admin-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+          }}
+        >
           <div>
             <h1>Admin dashboard</h1>
             <p>Monitor PeerFund activity and review user verifications.</p>
