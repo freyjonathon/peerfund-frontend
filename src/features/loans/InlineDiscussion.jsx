@@ -31,7 +31,7 @@ export default function InlineDiscussion({ threadId, limit = 5, pollMs = 5000 })
 
   const currentUserId = useMemo(() => getCurrentUserId(), []);
 
-  const baseUrl = `/api/loans/${threadId}/messages`; // <-- underscore route
+  const baseUrl = `/api/loans/${threadId}/_messages`; // <-- underscore route
 
   const scrollToBottom = () =>
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
