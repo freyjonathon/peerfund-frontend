@@ -183,6 +183,8 @@ export default function LoanMarketplace() {
               (typeof loan.offerCount === 'number' && loan.offerCount) ??
               (loan._count?.loanOffers ??
                 (Array.isArray(loan.loanOffers) ? loan.loanOffers.length : 0));
+                
+            console.log('INLINE THREAD ID:', id, loan);
 
             return (
               <div className="lm-card" key={id}>
