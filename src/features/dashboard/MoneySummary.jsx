@@ -8,15 +8,13 @@ import { apiFetch } from '../../utils/api';
 
 /* ----------------------- helpers ----------------------- */
 
-// decode JWT for current user id
 function getCurrentUserId() {
   const t = localStorage.getItem('token');
   if (!t) return null;
   try {
     const payload = JSON.parse(atob(t.split('.')[1] || ''));
     return payload?.userId ?? null;
-  } catch (err) {
-    // Invalid/expired token or malformed payload
+  } catch {
     return null;
   }
 }
@@ -24,7 +22,6 @@ function getCurrentUserId() {
 const fmtMoney = (n) =>
   typeof n === 'number' && !Number.isNaN(n) ? `$${n.toFixed(2)}` : '—';
 
-// compact row layout
 const ROW_GRID = {
   display: 'grid',
   gridTemplateColumns: 'minmax(140px,1fr) 120px 140px auto auto',
@@ -35,25 +32,14 @@ const ROW_GRID = {
 function isLoanPaidOff(loan) {
   const s = (loan.status || '').toUpperCase();
 
-  // Explicit status flags
   if (['PAID_OFF', 'COMPLETED', 'CLOSED'].includes(s)) return true;
+  if (typeof loan.remainingPrincipal === 'number' && loan.remainingPrincipal <= 0) return true;
+  if (typeof loan.remainingPrincipalCents === 'number' && loan.remainingPrincipalCents <= 0) return true;
 
-  // Remaining principal flags
-  if (typeof loan.remainingPrincipal === 'number' && loan.remainingPrincipal <= 0) {
-    return true;
-  }
-  if (typeof loan.remainingPrincipalCents === 'number' && loan.remainingPrincipalCents <= 0) {
-    return true;
-  }
-
-  // Frontend-only inference (no next due date + no installment amount)
   const hasNextDue = !!loan.nextDueDate;
-  const installment =
-    typeof loan.installmentAmount === 'number' ? loan.installmentAmount : null;
+  const installment = typeof loan.installmentAmount === 'number' ? loan.installmentAmount : null;
 
-  if (!hasNextDue && (installment === null || installment <= 0)) {
-    return true;
-  }
+  if (!hasNextDue && (installment === null || installment <= 0)) return true;
 
   return false;
 }
@@ -63,7 +49,7 @@ function sortLoansWithPaidOffLast(list) {
     const aDone = isLoanPaidOff(a);
     const bDone = isLoanPaidOff(b);
     if (aDone === bDone) return 0;
-    return aDone ? 1 : -1; // active first, paid-off last
+    return aDone ? 1 : -1;
   });
 }
 
@@ -74,17 +60,16 @@ function OpenRequestRow({
   isExpanded,
   onToggle,
   actionLoading,
-  offersContent, // React node for market/borrower offers list
-  onMakeOffer, // fn for market/lender to open OfferModal
-  onAcceptDirect, // fn for direct approve
-  onDeclineDirect, // fn for direct decline
+  offersContent,
+  onMakeOffer,
+  onAcceptDirect,
+  onDeclineDirect,
 }) {
   const isMarket = req.type === 'market';
   const isBorrowing = req.role === 'Borrowing';
 
   return (
     <div className="ms-card" key={req.id}>
-      {/* ONE-LINE TOP ROW */}
       <div className="ms-card-row" style={ROW_GRID}>
         <div>
           <div className="ms-label">Counterparty</div>
@@ -112,12 +97,9 @@ function OpenRequestRow({
         </div>
       </div>
 
-      {/* DETAILS */}
       {isExpanded && (
         <div className="ms-details">
-          <p className="mt-6">
-            <strong>Status:</strong> {req.status ?? 'OPEN'}
-          </p>
+          <p className="mt-6"><strong>Status:</strong> {req.status ?? 'OPEN'}</p>
           <p className="mt-6">
             <strong>Interest Rate:</strong>{' '}
             {Number.isFinite(req.interestRate) ? `${req.interestRate}%` : '—'}
@@ -126,16 +108,13 @@ function OpenRequestRow({
             <strong>Duration:</strong>{' '}
             {Number.isFinite(req.duration) ? `${req.duration} months` : '—'}
           </p>
+
           {req.purpose ? (
-            <p className="mt-6">
-              <strong>Reason:</strong> {req.purpose}
-            </p>
+            <p className="mt-6"><strong>Reason:</strong> {req.purpose}</p>
           ) : null}
 
-          {/* MARKET: Borrowing => show the actual offers placed by lenders */}
           {isMarket && isBorrowing && offersContent}
 
-          {/* MARKET: Lending => allow me to place an offer */}
           {isMarket && !isBorrowing && (
             <div className="mt-8" style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button className="action-btn sm primary" onClick={onMakeOffer}>
@@ -144,7 +123,6 @@ function OpenRequestRow({
             </div>
           )}
 
-          {/* DIRECT requests => approve/decline */}
           {!isMarket && (
             <div className="mt-8" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
@@ -177,25 +155,18 @@ export default function MoneySummary() {
     loansReceived: [],
     myOpenRequests: [],
   });
+
   const [loading, setLoading] = useState(true);
-
   const [expanded, setExpanded] = useState({});
-  const [openSec, setOpenSec] = useState({
-    open: true,
-    given: true,
-    received: true,
-  });
-
+  const [openSec, setOpenSec] = useState({ open: true, given: true, received: true });
   const [actionLoading, setActionLoading] = useState({});
   const [threadLoanId, setThreadLoanId] = useState(null);
 
-  // marketplace offers cache per loanId
   const [offersByLoanId, setOffersByLoanId] = useState({});
   const [offersLoading, setOffersLoading] = useState({});
   const [offerWorking, setOfferWorking] = useState({});
   const [offerModalLoanId, setOfferModalLoanId] = useState(null);
-
-  /* ------------------ Fetch helpers (market + direct) ------------------ */
+  const [funding, setFunding] = useState({});
 
   const fetchMarketOpenRequests = useCallback(async () => {
     const me = getCurrentUserId();
@@ -203,7 +174,6 @@ export default function MoneySummary() {
 
     const rows = [];
 
-    // (A) Requests where I am the LENDER (I’ve made an offer)
     try {
       const data = await apiFetch('/api/loans/offers/mine');
       const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
@@ -211,7 +181,7 @@ export default function MoneySummary() {
       for (const it of items) {
         rows.push({
           type: 'market',
-          id: it.id, // loanRequest id
+          id: it.id,
           amount: Number(it.amount),
           duration: Number(it.duration),
           interestRate: Number(it.myOffer?.interestRate ?? it.interestRate),
@@ -233,11 +203,10 @@ export default function MoneySummary() {
             : null,
         });
       }
-    } catch (err) {
-      // Non-fatal
+    } catch {
+      // non-fatal
     }
 
-    // (B) My OPEN requests that already have offers
     let mineOpen = [];
     try {
       const rawAll = await apiFetch('/api/loans/open');
@@ -247,16 +216,19 @@ export default function MoneySummary() {
           (x.status || 'OPEN').toUpperCase() === 'OPEN' &&
           String(x.borrowerId || x?.borrower?.id) === String(me)
       );
-    } catch (err) {
-      // Non-fatal
+    } catch {
+      // non-fatal
     }
 
     const keepNow = [];
     const toProbe = [];
+
     for (const req of mineOpen) {
       const offersArr = Array.isArray(req.loanOffers) ? req.loanOffers : [];
       const offerCount =
-        typeof req?._count?.loanOffers === 'number' ? req._count.loanOffers : offersArr.length;
+        typeof req?._count?.loanOffers === 'number'
+          ? req._count.loanOffers
+          : offersArr.length;
 
       if (offerCount > 0) keepNow.push(req);
       else toProbe.push(req);
@@ -271,8 +243,8 @@ export default function MoneySummary() {
               setOffersByLoanId((m) => ({ ...m, [req.id]: arr }));
               return req;
             }
-          } catch (err) {
-            // Non-fatal
+          } catch {
+            // non-fatal
           }
           return null;
         })
@@ -282,6 +254,7 @@ export default function MoneySummary() {
 
     for (const req of keepNow) {
       const borrowerId = req.borrowerId || req?.borrower?.id || me;
+
       rows.push({
         type: 'market',
         id: req.id,
@@ -305,12 +278,15 @@ export default function MoneySummary() {
   const fetchDirectOpenRequests = useCallback(async () => {
     const me = getCurrentUserId();
     if (!me) return [];
+
     try {
       const rows = await apiFetch('/api/direct-requests/open/mine');
+
       return (Array.isArray(rows) ? rows : []).map((d) => {
         const borrowerId = d.borrowerId || d?.borrower?.id;
         const lenderId = d.lenderId || d?.lender?.id;
         const iAmBorrower = String(borrowerId) === String(me);
+
         return {
           type: 'direct',
           id: d.id,
@@ -322,13 +298,14 @@ export default function MoneySummary() {
           borrowerName: d?.borrower?.name || (iAmBorrower ? 'You' : ''),
           lenderId,
           lenderName: d?.lender?.name || (!iAmBorrower ? 'You' : ''),
-          counterpartyName: iAmBorrower ? d?.lender?.name || 'Lender' : d?.borrower?.name || 'Borrower',
+          counterpartyName: iAmBorrower
+            ? d?.lender?.name || 'Lender'
+            : d?.borrower?.name || 'Borrower',
           role: iAmBorrower ? 'Borrowing' : 'Lending',
           status: d.status || 'PENDING',
         };
       });
-    } catch (err) {
-      // Non-fatal
+    } catch {
       return [];
     }
   }, []);
@@ -345,18 +322,19 @@ export default function MoneySummary() {
 
       try {
         const data = await apiFetch('/api/users/my-money-summary');
+
         loansGiven = Array.isArray(data?.loansGiven)
           ? data.loansGiven
           : Array.isArray(data?.loansAsLender)
           ? data.loansAsLender
           : [];
+
         loansReceived = Array.isArray(data?.loansReceived)
           ? data.loansReceived
           : Array.isArray(data?.loansAsBorrower)
           ? data.loansAsBorrower
           : [];
       } catch (e) {
-        // Non-fatal: still load open requests below
         console.warn('my-money-summary failed:', e?.message || e);
       }
 
@@ -395,12 +373,12 @@ export default function MoneySummary() {
     }
   };
 
-  /* -------------------- Offers (marketplace) -------------------- */
-
   const loadOffers = async (loanId) => {
     setOffersLoading((m) => ({ ...m, [loanId]: true }));
+
     try {
       const items = await apiFetch(`/api/loans/${loanId}/offers`).catch(() => []);
+
       setOffersByLoanId((m) => ({
         ...m,
         [loanId]: Array.isArray(items) ? items : [],
@@ -417,7 +395,6 @@ export default function MoneySummary() {
     setOfferWorking((m) => ({ ...m, [offer.id]: true }));
 
     try {
-      // 1) Accept the offer -> server creates the Loan (status: ACCEPTED)
       const data = await apiFetch(`/api/loans/offers/${offer.id}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -429,10 +406,10 @@ export default function MoneySummary() {
 
       console.log('✅ Offer accepted response:', data);
 
-      // 2) Just refresh the summary; funding is done later by the lender
       await fetchSummary();
+
       alert(
-        'Loan accepted and contract saved. Waiting for lender to fund from their PeerFund wallet.'
+        'Loan accepted and contract saved. The lender can now fund this loan from their saved payment method.'
       );
     } catch (e) {
       console.error(e);
@@ -442,10 +419,9 @@ export default function MoneySummary() {
     }
   };
 
-  /* -------------------- Direct request actions -------------------- */
-
   async function tryEndpoints(methods, url, body) {
     let lastErr = null;
+
     for (const method of methods) {
       try {
         await apiFetch(url, {
@@ -458,19 +434,23 @@ export default function MoneySummary() {
         lastErr = e;
       }
     }
+
     throw lastErr || new Error('All methods failed');
   }
 
   const acceptDirect = async (req) => {
     setActionLoading((m) => ({ ...m, [req.id]: true }));
+
     try {
       const urls = [
         `/api/direct-requests/${req.id}/approve`,
         `/api/direct-requests/${req.id}/accept`,
         `/api/direct-requests/${req.id}/respond?action=ACCEPT`,
       ];
+
       let ok = false;
       let last = null;
+
       for (const u of urls) {
         try {
           await tryEndpoints(['POST', 'PUT', 'PATCH'], u);
@@ -480,6 +460,7 @@ export default function MoneySummary() {
           last = e;
         }
       }
+
       if (!ok) throw last || new Error('Approve failed');
       await fetchSummary();
     } catch (e) {
@@ -492,14 +473,17 @@ export default function MoneySummary() {
 
   const declineDirect = async (req) => {
     setActionLoading((m) => ({ ...m, [req.id]: true }));
+
     try {
       const urls = [
         `/api/direct-requests/${req.id}/decline`,
         `/api/direct-requests/${req.id}/reject`,
         `/api/direct-requests/${req.id}/respond?action=DECLINE`,
       ];
+
       let ok = false;
       let last = null;
+
       for (const u of urls) {
         try {
           await tryEndpoints(['POST', 'PUT', 'PATCH'], u);
@@ -509,6 +493,7 @@ export default function MoneySummary() {
           last = e;
         }
       }
+
       if (!ok) throw last || new Error('Decline failed');
       await fetchSummary();
     } catch (e) {
@@ -519,13 +504,17 @@ export default function MoneySummary() {
     }
   };
 
-  /* ------------------------------- Funding (lender-side) ------------------------------- */
-
-  const [funding, setFunding] = useState({}); // track loading per-loan
-
   const handleFundLoan = async (loanId) => {
     if (!loanId) return;
+
+    const confirmFund = window.confirm(
+      'Fund this loan from your saved payment method? The borrower will receive the funds in their PeerFund wallet.'
+    );
+
+    if (!confirmFund) return;
+
     setFunding((m) => ({ ...m, [loanId]: true }));
+
     try {
       const data = await apiFetch(`/api/loans/${loanId}/fund`, {
         method: 'POST',
@@ -533,7 +522,15 @@ export default function MoneySummary() {
       });
 
       console.log('✅ Loan funded response:', data);
-      alert('Loan successfully funded from your PeerFund wallet.');
+
+      if (data?.status === 'PROCESSING') {
+        alert(
+          'Funding payment is processing. The borrower wallet will update once the payment succeeds.'
+        );
+      } else {
+        alert('Loan successfully funded from your saved payment method.');
+      }
+
       await fetchSummary();
     } catch (err) {
       console.error('Fund loan error:', err);
@@ -543,11 +540,10 @@ export default function MoneySummary() {
     }
   };
 
-  /* ------------------------------- Renderers ------------------------------- */
-
   const renderOffersBlock = (loanId) => {
     const loading = !!offersLoading[loanId];
     const offers = offersByLoanId[loanId] || [];
+
     return (
       <div className="mt-8">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -561,6 +557,7 @@ export default function MoneySummary() {
             {loading ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
+
         {loading ? (
           <p className="ms-muted">Loading offers…</p>
         ) : offers.length === 0 ? (
@@ -584,6 +581,7 @@ export default function MoneySummary() {
                 <div>{fmtMoney(Number(of.amount) || 0)}</div>
                 <div>{Number.isFinite(of.duration) ? `${of.duration} mo` : '—'}</div>
                 <div>{Number.isFinite(of.interestRate) ? `${of.interestRate}%` : '—'}</div>
+
                 <div style={{ justifySelf: 'end', display: 'flex', gap: 6 }}>
                   <button
                     className="action-btn xs primary"
@@ -593,6 +591,7 @@ export default function MoneySummary() {
                     {offerWorking[of.id] ? 'Working…' : 'Accept'}
                   </button>
                 </div>
+
                 {of.message ? (
                   <div style={{ gridColumn: '1 / -1', color: '#334155', fontSize: 13 }}>
                     <strong>Message:</strong> {of.message}
@@ -652,10 +651,11 @@ export default function MoneySummary() {
             >
               💬 Messages
             </button>
+
             <button
               onClick={() => setExpanded((m) => ({ ...m, [key]: !isExpanded }))}
               className="action-btn sm"
-              title="View contract"
+              title="View details"
             >
               {isExpanded ? '🔽 Hide' : '📄 View'}
             </button>
@@ -669,20 +669,24 @@ export default function MoneySummary() {
                 <strong>Status:</strong> {loan.status}
               </p>
             )}
+
             <p className="mt-6">
               <strong>Interest Rate:</strong>{' '}
               {typeof loan.interestRate === 'number' ? `${loan.interestRate}%` : '—'}
             </p>
+
             <p className="mt-6">
               <strong>Duration:</strong>{' '}
               {typeof loan.duration === 'number' ? `${loan.duration} months` : '—'}
             </p>
+
             <p className="mt-6">
               <strong>Next Due Date:</strong>{' '}
               {loan.nextDueDate ? new Date(loan.nextDueDate).toLocaleDateString() : '—'}
             </p>
+
             <p className="mt-6">
-              <strong>Installment (this period):</strong> {fmtMoney(loan.installmentAmount)}
+              <strong>Installment:</strong> {fmtMoney(loan.installmentAmount)}
             </p>
 
             {isPaidOff && (
@@ -698,16 +702,17 @@ export default function MoneySummary() {
             )}
 
             {isLender && !isPaidOff && rawStatus === 'ACCEPTED' && (
-              <div className="mt-8" style={{ display: 'flex', gap: 8 }}>
+              <div className="mt-8" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   className="action-btn sm primary"
                   onClick={() => handleFundLoan(loanId)}
                   disabled={!!funding[loanId]}
                 >
-                  {funding[loanId] ? 'Funding…' : 'Fund from PeerFund wallet'}
+                  {funding[loanId] ? 'Funding…' : 'Fund Loan'}
                 </button>
+
                 <span className="ms-muted" style={{ alignSelf: 'center' }}>
-                  Requires enough wallet balance
+                  Charges your saved payment method and credits the borrower wallet.
                 </span>
               </div>
             )}
@@ -717,9 +722,9 @@ export default function MoneySummary() {
     );
   };
 
-  /* ------------------------------- Render ------------------------------- */
-
-  if (loading) return <p className="ms-loading ms-container">Loading money summary...</p>;
+  if (loading) {
+    return <p className="ms-loading ms-container">Loading money summary...</p>;
+  }
 
   const given = Array.isArray(summary.loansGiven) ? summary.loansGiven : [];
   const received = Array.isArray(summary.loansReceived) ? summary.loansReceived : [];
@@ -729,7 +734,6 @@ export default function MoneySummary() {
     <div className="ms-container">
       <h2 className="ms-heading">💵 My Money Summary</h2>
 
-      {/* Section: Open Requests */}
       <div className="ms-section">
         <button
           className="ms-section-head"
@@ -771,7 +775,6 @@ export default function MoneySummary() {
         )}
       </div>
 
-      {/* Section: Loans Given */}
       <div className="ms-section">
         <button
           className="ms-section-head"
@@ -793,7 +796,6 @@ export default function MoneySummary() {
         )}
       </div>
 
-      {/* Section: Loans Received */}
       <div className="ms-section">
         <button
           className="ms-section-head"
@@ -815,12 +817,13 @@ export default function MoneySummary() {
         )}
       </div>
 
-      {threadLoanId && <LoanThreadModal loanId={threadLoanId} onClose={() => setThreadLoanId(null)} />}
+      {threadLoanId && (
+        <LoanThreadModal loanId={threadLoanId} onClose={() => setThreadLoanId(null)} />
+      )}
 
       {offerModalLoanId && (
         <OfferModal loanId={offerModalLoanId} onClose={() => setOfferModalLoanId(null)} />
       )}
-
     </div>
   );
 }
