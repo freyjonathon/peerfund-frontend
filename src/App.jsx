@@ -15,6 +15,7 @@ import PrivateRoute from './features/auth/PrivateRoute';
 import About from './features/home/About';
 import HowItWorks from './features/home/HowItWorks';
 import Contact from './features/home/Contact';
+import Careers from './features/home/Careers';
 
 import Dashboard from './features/dashboard/Dashboard';
 import Documents from './features/dashboard/Documents';
@@ -80,6 +81,7 @@ function AppRoutes() {
       <Route path="/about" element={<About />} />
       <Route path="/how-it-works" element={<HowItWorks />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/careers" element={<Careers />} />
 
       {/* ---------------- Verification page (USER flow) ---------------- */}
       <Route
