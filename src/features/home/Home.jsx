@@ -38,6 +38,9 @@ export default function Home() {
             <button className="btn btn--ghost" onClick={() => navigate('/contact')}>
               Contact
             </button>
+            <button className="btn btn--ghost" onClick={() => navigate('/careers')}>
+              Careers
+            </button>
           </div>
 
           <div className="hero__auth">
@@ -48,9 +51,6 @@ export default function Home() {
               Sign up
             </button>
           </div>
-          <button className="btn btn--ghost" onClick={() => navigate('/careers')}>
-          Careers
-        </button>
         </nav>
 
         <div className="container hero__copy">
