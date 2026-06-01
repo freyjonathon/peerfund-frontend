@@ -12,7 +12,10 @@ export default function HowItWorks() {
       <section className="hero">
         <span className="hero__glow hero__glow--a" aria-hidden />
         <span className="hero__glow hero__glow--b" aria-hidden />
-
+        <button className="btn btn--ghost hero__brand-btn" onClick={() => navigate('/')}>
+            ← PeerFund
+          </button>
+          
         <div className="container hero__copy">
           <div className="hero__logo-showcase">
             <img src={peerfundGlobe} alt="PeerFund" className="hero__logo-large" />
