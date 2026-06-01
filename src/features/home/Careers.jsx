@@ -77,7 +77,7 @@ export default function Careers() {
       <nav className="container hero__nav" aria-label="Careers navigation">
         <div className="hero__brand">
           <button className="btn btn--ghost hero__brand-btn" onClick={() => navigate('/')}>
-            ← PeerFund
+            ← Back to Home
           </button>
         </div>
 
