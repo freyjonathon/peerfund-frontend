@@ -1,4 +1,3 @@
-// src/features/home/About.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
@@ -9,13 +8,46 @@ export default function About() {
 
   return (
     <div className="home">
+      <nav className="container hero__nav" aria-label="About navigation">
+        <div className="hero__brand">
+          <button
+            type="button"
+            className="btn btn--ghost hero__brand-btn"
+            onClick={() => navigate('/')}
+          >
+            ← Back to Home
+          </button>
+        </div>
+
+        <div className="hero__links hide-sm">
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/how-it-works')}>
+            How it works
+          </button>
+
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/contact')}>
+            Contact
+          </button>
+
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/careers')}>
+            Careers
+          </button>
+        </div>
+
+        <div className="hero__auth">
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/login')}>
+            Log in
+          </button>
+
+          <button type="button" className="btn btn--primary" onClick={() => navigate('/signup')}>
+            Sign up
+          </button>
+        </div>
+      </nav>
+
       <section className="hero">
         <span className="hero__glow hero__glow--a" aria-hidden />
         <span className="hero__glow hero__glow--b" aria-hidden />
-        <button className="btn btn--ghost hero__brand-btn" onClick={() => navigate('/')}>
-            ← PeerFund
-          </button>
-          
+
         <div className="container hero__copy">
           <div className="hero__logo-showcase">
             <img src={peerfundGlobe} alt="PeerFund" className="hero__logo-large" />
