@@ -1,4 +1,3 @@
-// src/features/home/HowItWorks.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
@@ -9,6 +8,42 @@ export default function HowItWorks() {
 
   return (
     <div className="home">
+      <nav className="container hero__nav" aria-label="How it works navigation">
+        <div className="hero__brand">
+          <button
+            type="button"
+            className="btn btn--ghost hero__brand-btn"
+            onClick={() => navigate('/')}
+          >
+            ← Back to Home
+          </button>
+        </div>
+
+        <div className="hero__links hide-sm">
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/about')}>
+            About
+          </button>
+
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/contact')}>
+            Contact
+          </button>
+
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/careers')}>
+            Careers
+          </button>
+        </div>
+
+        <div className="hero__auth">
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/login')}>
+            Log in
+          </button>
+
+          <button type="button" className="btn btn--primary" onClick={() => navigate('/signup')}>
+            Sign up
+          </button>
+        </div>
+      </nav>
+
       <section className="hero">
         <span className="hero__glow hero__glow--a" aria-hidden />
         <span className="hero__glow hero__glow--b" aria-hidden />
@@ -38,8 +73,7 @@ export default function HowItWorks() {
               <div className="feature__icon">1️⃣</div>
               <h3 className="feature__title">Create an account</h3>
               <p className="feature__desc">
-                Sign up, verify your identity, and securely connect your wallet
-                and payment methods.
+                Sign up, verify your identity, and securely connect your payment methods.
               </p>
             </article>
 
@@ -72,10 +106,10 @@ export default function HowItWorks() {
 
             <article className="feature">
               <div className="feature__icon">5️⃣</div>
-              <h3 className="feature__title">Funding & wallet</h3>
+              <h3 className="feature__title">Funding</h3>
               <p className="feature__desc">
-                Lenders fund directly through their PeerFund wallet and borrowers
-                receive funds securely.
+                Lenders fund loans using their saved payment methods and borrowers
+                receive funds securely through PeerFund.
               </p>
             </article>
 
