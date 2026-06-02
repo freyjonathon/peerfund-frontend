@@ -8,11 +8,51 @@ import {
   fetchConnectAccountStatus,
 } from './walletApi';
 
+function parseApiError(error) {
+  let msg = error?.message || 'Something went wrong.';
+
+  try {
+    const cleaned = msg.replace(/^HTTP \d+:\s*/, '');
+    const parsed = JSON.parse(cleaned);
+    msg = parsed?.error || msg;
+
+    return {
+      message: msg,
+      code: parsed?.code || '',
+      raw: parsed,
+    };
+  } catch {
+    return {
+      message: msg,
+      code: '',
+      raw: null,
+    };
+  }
+}
+
+function isStripeSettlementError(message = '', code = '') {
+  const m = String(message).toLowerCase();
+  const c = String(code).toLowerCase();
+
+  return (
+    c.includes('insufficient_stripe_available_balance') ||
+    m.includes('insufficient funds in stripe') ||
+    m.includes('stripe funds are not available') ||
+    m.includes('stripe balance') ||
+    m.includes('payment settles')
+  );
+}
+
 function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
-  const [amount, setAmount] = useState('25.00');
+  const [amount, setAmount] = useState(
+    typeof maxDollars === 'number' && maxDollars > 0
+      ? maxDollars.toFixed(2)
+      : '25.00'
+  );
   const [busy, setBusy] = useState(false);
   const [setupBusy, setSetupBusy] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [connectStatus, setConnectStatus] = useState(null);
 
   const { clamped, exceedsBalance, canSubmit } = useMemo(() => {
@@ -43,6 +83,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
     try {
       setSetupBusy(true);
       setError('');
+      setInfo('');
 
       const data = await createConnectOnboardingLink();
       if (!data?.url) throw new Error('Could not create Stripe payout setup link.');
@@ -50,7 +91,8 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       window.location.assign(data.url);
     } catch (e) {
       console.error('Payout setup failed:', e);
-      setError(e?.message || 'Could not start payout setup.');
+      const parsed = parseApiError(e);
+      setError(parsed.message || 'Could not start payout setup.');
     } finally {
       setSetupBusy(false);
     }
@@ -58,6 +100,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
 
   function needsPayoutSetupFromError(message = '') {
     const m = String(message).toLowerCase();
+
     return (
       m.includes('connect') ||
       m.includes('payout') ||
@@ -73,13 +116,23 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
     try {
       setBusy(true);
       setError('');
+      setInfo('');
 
       await withdrawFromWallet({ amountDollars: clamped });
+
+      setInfo('Withdrawal started successfully.');
       await onBalanceUpdated?.();
     } catch (e) {
       console.error('Withdraw failed:', e);
 
-      const msg = e?.message || 'Failed to withdraw funds';
+      const parsed = parseApiError(e);
+      let msg = parsed.message || 'Failed to withdraw funds';
+
+      if (isStripeSettlementError(msg, parsed.code)) {
+        msg =
+          'Your PeerFund balance shows funds, but the payment has not fully settled in Stripe yet. Please try withdrawing again later.';
+      }
+
       setError(msg);
 
       if (needsPayoutSetupFromError(msg)) {
@@ -108,8 +161,8 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
       )}
 
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 8 }}>
-        Withdrawals are sent to your Stripe payout account. You may need to complete
-        payout setup before your first withdrawal.
+        Withdrawals are sent to your Stripe payout account. Funds may need to finish
+        settling before they can be withdrawn.
       </p>
 
       {showSetupHint && (
@@ -147,6 +200,21 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
           >
             {setupBusy ? 'Opening…' : 'Set up payouts'}
           </button>
+        </div>
+      )}
+
+      {info && (
+        <div
+          style={{
+            marginTop: 8,
+            background: '#ecfdf5',
+            border: '1px solid #bbf7d0',
+            color: '#166534',
+            borderRadius: 8,
+            padding: '8px 10px',
+          }}
+        >
+          {info}
         </div>
       )}
 
@@ -285,7 +353,6 @@ export default function WalletPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const availableCents = wallet?.availableCents ?? 0;
@@ -346,15 +413,16 @@ export default function WalletPage() {
                   flex: 1,
                   padding: '8px 14px',
                   borderRadius: 999,
-                  border: '1px solid #4f46e5',
-                  background: '#4f46e5',
-                  color: '#fff',
+                  border: '1px solid #cbd5e1',
+                  background: '#e5e7eb',
+                  color: '#64748b',
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: 'not-allowed',
                 }}
-                onClick={() => setShowDepositPanel(true)}
+                disabled
+                title="Manual deposits are currently disabled. Funding now happens directly from saved payment methods."
               >
-                Add funds
+                Add funds disabled
               </button>
 
               <button
@@ -389,12 +457,13 @@ export default function WalletPage() {
               }}
             >
               <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-                ACH bank funding
+                PeerFund wallet
               </div>
 
               <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                PeerFund uses ACH bank transfers for wallet funding and repayments.
-                ACH keeps processing costs lower and allows larger transfer limits.
+                Your PeerFund wallet shows funds you have received through loans,
+                repayments, and platform activity. You do not need to manually add
+                funds before lending.
               </p>
 
               <div
@@ -409,45 +478,27 @@ export default function WalletPage() {
                 }}
               >
                 <div style={{ marginBottom: 8 }}>
-                  <strong>How ACH deposits work:</strong>
+                  <strong>How withdrawals work:</strong>
                 </div>
 
                 <ul style={{ paddingLeft: 18, margin: 0 }}>
                   <li>
-                    Link your bank account securely through Stripe.
+                    Received funds appear in your PeerFund wallet balance.
                   </li>
 
                   <li>
-                    Deposits first appear as <strong>Pending</strong>.
+                    Some funds may need to settle with Stripe before withdrawal.
                   </li>
 
                   <li>
-                    Funds automatically move to{" "}
-                    <strong>Available</strong> after ACH settlement.
+                    Withdrawals are sent to your Stripe payout account.
                   </li>
 
                   <li>
-                    Withdrawals are sent back to your Stripe payout account.
+                    If funds are still settling, try again later.
                   </li>
                 </ul>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setShowDepositPanel(true)}
-                style={{
-                  marginTop: 12,
-                  padding: '8px 14px',
-                  borderRadius: 999,
-                  border: '1px solid #4f46e5',
-                  background: '#4f46e5',
-                  color: '#fff',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Link bank / Add ACH funds
-              </button>
             </div>
           )}
 
