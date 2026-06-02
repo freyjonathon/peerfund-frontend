@@ -14,10 +14,9 @@ function parseApiError(error) {
   try {
     const cleaned = msg.replace(/^HTTP \d+:\s*/, '');
     const parsed = JSON.parse(cleaned);
-    msg = parsed?.error || msg;
 
     return {
-      message: msg,
+      message: parsed?.error || msg,
       code: parsed?.code || '',
       raw: parsed,
     };
@@ -324,7 +323,7 @@ function WithdrawPanel({ onClose, onBalanceUpdated, maxDollars }) {
 export default function WalletPage() {
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showDepositPanel, setShowDepositPanel] = useState(false);
+  const [showPaymentMethodPanel, setShowPaymentMethodPanel] = useState(false);
   const [showWithdrawPanel, setShowWithdrawPanel] = useState(false);
   const [error, setError] = useState('');
 
@@ -413,16 +412,15 @@ export default function WalletPage() {
                   flex: 1,
                   padding: '8px 14px',
                   borderRadius: 999,
-                  border: '1px solid #cbd5e1',
-                  background: '#e5e7eb',
-                  color: '#64748b',
+                  border: '1px solid #4f46e5',
+                  background: '#4f46e5',
+                  color: '#fff',
                   fontWeight: 700,
-                  cursor: 'not-allowed',
+                  cursor: 'pointer',
                 }}
-                disabled
-                title="Manual deposits are currently disabled. Funding now happens directly from saved payment methods."
+                onClick={() => setShowPaymentMethodPanel(true)}
               >
-                Add funds disabled
+                Save payment method
               </button>
 
               <button
@@ -445,7 +443,7 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {!showDepositPanel && !showWithdrawPanel && (
+          {!showPaymentMethodPanel && !showWithdrawPanel && (
             <div
               style={{
                 marginTop: 20,
@@ -457,13 +455,12 @@ export default function WalletPage() {
               }}
             >
               <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
-                PeerFund wallet
+                Payment method & wallet
               </div>
 
               <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                Your PeerFund wallet shows funds you have received through loans,
-                repayments, and platform activity. You do not need to manually add
-                funds before lending.
+                Save a payment method to fund loans and make repayments. Your
+                PeerFund wallet shows money you have received and can withdraw.
               </p>
 
               <div
@@ -478,31 +475,48 @@ export default function WalletPage() {
                 }}
               >
                 <div style={{ marginBottom: 8 }}>
-                  <strong>How withdrawals work:</strong>
+                  <strong>How this works:</strong>
                 </div>
 
                 <ul style={{ paddingLeft: 18, margin: 0 }}>
                   <li>
-                    Received funds appear in your PeerFund wallet balance.
+                    Your saved payment method is used to fund loans and make repayments.
                   </li>
 
                   <li>
-                    Some funds may need to settle with Stripe before withdrawal.
+                    You do not need to manually deposit funds before lending.
+                  </li>
+
+                  <li>
+                    Money you receive appears in your PeerFund wallet.
                   </li>
 
                   <li>
                     Withdrawals are sent to your Stripe payout account.
                   </li>
-
-                  <li>
-                    If funds are still settling, try again later.
-                  </li>
                 </ul>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPaymentMethodPanel(true)}
+                style={{
+                  marginTop: 12,
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  border: '1px solid #4f46e5',
+                  background: '#4f46e5',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Save or update payment method
+              </button>
             </div>
           )}
 
-          {showDepositPanel && (
+          {showPaymentMethodPanel && (
             <div
               style={{
                 position: 'fixed',
@@ -513,7 +527,7 @@ export default function WalletPage() {
                 justifyContent: 'center',
                 zIndex: 50,
               }}
-              onClick={() => setShowDepositPanel(false)}
+              onClick={() => setShowPaymentMethodPanel(false)}
             >
               <div
                 style={{
@@ -527,9 +541,9 @@ export default function WalletPage() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <WalletPanel
-                  onClose={() => setShowDepositPanel(false)}
+                  onClose={() => setShowPaymentMethodPanel(false)}
                   onBalanceUpdated={async () => {
-                    setShowDepositPanel(false);
+                    setShowPaymentMethodPanel(false);
                     setLoading(true);
                     await loadWallet();
                   }}
