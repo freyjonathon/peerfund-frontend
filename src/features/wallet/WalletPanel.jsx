@@ -1,63 +1,15 @@
 // src/features/wallet/WalletPanel.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStripe } from '@stripe/react-stripe-js';
 import {
-  createAchDeposit,
   createBankSetupIntent,
   saveAchPaymentMethod,
   fetchAchPaymentMethod,
 } from './walletApi';
 
-const STRIPE_ACH_PERCENT = 0.008;
-const STRIPE_ACH_MAX_FEE = 5.0;
-const PEERFUND_ACH_DEPOSIT_FEE_RATE = 0.01;
-
-function money(n) {
-  return `$${Number(n || 0).toFixed(2)}`;
-}
-
-function estimateAchGross(netDollars) {
-  const netCents = Math.round(Number(netDollars || 0) * 100);
-
-  if (!netCents || netCents <= 0) {
-    return {
-      net: 0,
-      stripeFee: 0,
-      peerfundFee: 0,
-      totalFees: 0,
-      gross: 0,
-    };
-  }
-
-  const peerfundFeeCents = Math.ceil(
-    netCents * PEERFUND_ACH_DEPOSIT_FEE_RATE
-  );
-
-  const preliminaryGross = Math.ceil(
-    (netCents + peerfundFeeCents) / (1 - STRIPE_ACH_PERCENT)
-  );
-
-  const achFeeCents = Math.min(
-    Math.round(STRIPE_ACH_MAX_FEE * 100),
-    Math.ceil(preliminaryGross * STRIPE_ACH_PERCENT)
-  );
-
-  const grossCents = netCents + peerfundFeeCents + achFeeCents;
-
-  return {
-    net: netCents / 100,
-    stripeFee: achFeeCents / 100,
-    peerfundFee: peerfundFeeCents / 100,
-    totalFees: (grossCents - netCents) / 100,
-    gross: grossCents / 100,
-  };
-}
-
 export default function WalletPanel({ onClose, onBalanceUpdated }) {
   const stripe = useStripe();
 
-  const [amount, setAmount] = useState('25.00');
-  const [busy, setBusy] = useState(false);
   const [linkingBank, setLinkingBank] = useState(false);
   const [loadingAch, setLoadingAch] = useState(true);
   const [error, setError] = useState('');
@@ -82,7 +34,7 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       console.warn('Could not load ACH payment method:', e);
       setAchReady(false);
       setAchMethod(null);
-      setError(e?.message || 'Could not check saved ACH bank account.');
+      setError(e?.message || 'Could not check saved payment method.');
     } finally {
       setLoadingAch(false);
     }
@@ -121,21 +73,6 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       mounted = false;
     };
   }, []);
-
-  const amountDollars = useMemo(() => {
-    const raw = (amount || '').replace(/[^0-9.]/g, '');
-    const numeric = Number(raw || 0);
-    if (!Number.isFinite(numeric) || numeric <= 0) return 0;
-    return Math.max(1, numeric);
-  }, [amount]);
-
-  const feePreview = useMemo(
-    () => estimateAchGross(amountDollars),
-    [amountDollars]
-  );
-
-  const canSubmit =
-    !busy && !linkingBank && !loadingAch && amountDollars >= 1 && achReady;
 
   async function linkBankAccount() {
     if (!stripe) {
@@ -183,7 +120,7 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       const pmId = confirmResult.setupIntent?.payment_method;
 
       if (!pmId) {
-        throw new Error('No ACH payment method returned from Stripe.');
+        throw new Error('No payment method returned from Stripe.');
       }
 
       const saved = await saveAchPaymentMethod({ paymentMethodId: pmId });
@@ -197,29 +134,12 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
       });
 
       await loadSavedAchMethod();
-    } catch (e) {
-      console.error('ACH bank link failed:', e);
-      setError(e?.message || 'Could not link bank account.');
-    } finally {
-      setLinkingBank(false);
-    }
-  }
-
-  async function deposit() {
-    if (!canSubmit) return;
-
-    try {
-      setBusy(true);
-      setError('');
-
-      await createAchDeposit({ amountDollars });
-
       await onBalanceUpdated?.();
     } catch (e) {
-      console.error('ACH deposit failed:', e);
-      setError(e?.message || 'ACH deposit failed');
+      console.error('Payment method link failed:', e);
+      setError(e?.message || 'Could not link payment method.');
     } finally {
-      setBusy(false);
+      setLinkingBank(false);
     }
   }
 
@@ -231,11 +151,11 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
 
   return (
     <div className="wallet-panel">
-      <h3>Add funds</h3>
+      <h3>Save payment method</h3>
 
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-        PeerFund uses ACH bank funding. Deposits show as pending first, then
-        become available after Stripe confirms settlement.
+        Save a bank account to fund loans and make repayments. You do not need
+        to manually deposit funds into your PeerFund wallet before lending.
       </p>
 
       {error && (
@@ -255,7 +175,7 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
 
       {loadingAch && (
         <div style={{ marginTop: 10, fontSize: 13, color: '#64748b' }}>
-          Checking saved ACH bank account…
+          Checking saved payment method…
         </div>
       )}
 
@@ -271,49 +191,48 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             color: '#92400e',
           }}
         >
-          <strong>No ACH bank linked yet.</strong>
+          <strong>No payment method linked yet.</strong>
 
           <div style={{ marginTop: 4 }}>
-            Link a bank account once, then future deposits can use the saved
-            bank without linking again.
+            Link a bank account once, then PeerFund can use it for loan funding
+            and repayments.
           </div>
 
-          <button
-            type="button"
-            onClick={linkBankAccount}
-            disabled={linkingBank || !stripe}
-            style={{
-              marginTop: 8,
-              padding: '7px 12px',
-              borderRadius: 999,
-              border: '1px solid #92400e',
-              background: '#92400e',
-              color: '#fff',
-              fontWeight: 700,
-              cursor: linkingBank ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {linkingBank ? 'Linking…' : 'Link ACH bank account'}
-          </button>
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={linkBankAccount}
+              disabled={linkingBank || !stripe}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 999,
+                border: '1px solid #92400e',
+                background: '#92400e',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: linkingBank ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {linkingBank ? 'Linking…' : 'Link bank account'}
+            </button>
 
-          <button
-            type="button"
-            onClick={loadSavedAchMethod}
-            disabled={loadingAch || linkingBank}
-            style={{
-              marginTop: 8,
-              marginLeft: 8,
-              padding: '7px 12px',
-              borderRadius: 999,
-              border: '1px solid #92400e',
-              background: '#ffffff',
-              color: '#92400e',
-              fontWeight: 700,
-              cursor: loadingAch || linkingBank ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Refresh saved bank
-          </button>
+            <button
+              type="button"
+              onClick={loadSavedAchMethod}
+              disabled={loadingAch || linkingBank}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 999,
+                border: '1px solid #92400e',
+                background: '#ffffff',
+                color: '#92400e',
+                fontWeight: 700,
+                cursor: loadingAch || linkingBank ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Refresh saved bank
+            </button>
+          </div>
         </div>
       )}
 
@@ -329,10 +248,10 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
             color: '#166534',
           }}
         >
-          <strong>ACH bank ready.</strong>
+          <strong>Payment method ready.</strong>
 
           <div style={{ marginTop: 4 }}>
-            Deposits will be pulled from <strong>{achLabel}</strong>.
+            Loan funding and repayments will use <strong>{achLabel}</strong>.
           </div>
 
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -373,137 +292,34 @@ export default function WalletPanel({ onClose, onBalanceUpdated }) {
         </div>
       )}
 
-      <div className="row" style={{ marginTop: 12 }}>
-        <label>Amount to add to wallet</label>
-
-        <div className="input-wrap" style={{ display: 'flex', gap: 6 }}>
-          <span
-            style={{
-              padding: '6px 10px',
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              background: '#f9fafb',
-              fontSize: 14,
-            }}
-          >
-            $
-          </span>
-
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            placeholder="25.00"
-            style={{
-              flex: 1,
-              padding: '6px 10px',
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-            }}
-          />
-        </div>
-
-        {amountDollars < 1 && (
-          <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
-            Enter at least $1.00
-          </div>
-        )}
+      <div
+        style={{
+          marginTop: 14,
+          border: '1px solid #e2e8f0',
+          borderRadius: 12,
+          padding: '10px 12px',
+          background: '#f8fafc',
+          fontSize: 13,
+          color: '#334155',
+          lineHeight: 1.5,
+        }}
+      >
+        <strong>How this payment method is used:</strong>
+        <ul style={{ paddingLeft: 18, marginTop: 8, marginBottom: 0 }}>
+          <li>Funding accepted loans</li>
+          <li>Making borrower repayments</li>
+          <li>SuperUser subscription billing</li>
+          <li>Your wallet only shows funds you have received</li>
+        </ul>
       </div>
-
-      {amountDollars >= 1 && (
-        <div
-          style={{
-            marginTop: 14,
-            border: '1px solid #e2e8f0',
-            borderRadius: 12,
-            padding: '10px 12px',
-            background: '#f8fafc',
-            fontSize: 14,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: 6,
-            }}
-          >
-            <span>Pending wallet deposit</span>
-            <strong>{money(feePreview.net)}</strong>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: 6,
-            }}
-          >
-            <span>Estimated ACH processing fee</span>
-            <span>{money(feePreview.stripeFee)}</span>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: 6,
-            }}
-          >
-            <span>PeerFund deposit fee</span>
-            <span>{money(feePreview.peerfundFee)}</span>
-          </div>
-
-          <div
-            style={{
-              borderTop: '1px solid #e2e8f0',
-              paddingTop: 8,
-              marginTop: 8,
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontWeight: 700,
-            }}
-          >
-            <span>Total charged</span>
-            <span>{money(feePreview.gross)}</span>
-          </div>
-
-          <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-            ACH deposits show as pending first and become available after
-            settlement.
-          </div>
-        </div>
-      )}
 
       <div className="row right" style={{ marginTop: 16, textAlign: 'right' }}>
         <button
           className="btn"
           onClick={onClose}
-          disabled={busy || linkingBank}
+          disabled={linkingBank}
         >
-          Cancel
-        </button>
-
-        <button
-          className="btn primary"
-          onClick={deposit}
-          disabled={!canSubmit}
-          style={{
-            marginLeft: 8,
-            padding: '8px 14px',
-            borderRadius: 999,
-            border: '1px solid #4f46e5',
-            background: canSubmit ? '#4f46e5' : '#9ca3af',
-            color: '#fff',
-            fontWeight: 700,
-            cursor: canSubmit ? 'pointer' : 'not-allowed',
-          }}
-        >
-          {busy
-            ? 'Processing…'
-            : achReady
-            ? `Deposit from saved bank ${money(feePreview.gross)}`
-            : 'Link ACH bank first'}
+          Close
         </button>
       </div>
     </div>
