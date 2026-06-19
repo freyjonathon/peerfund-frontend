@@ -121,6 +121,14 @@ const Dashboard = () => {
       // 1) Check they have a funding card on file
       const hasPayment = true;
 
+      if (!hasPayment) {
+        const go = window.confirm(
+          'To upgrade to SuperUser, please save a funding card in your Wallet first.\n\nGo to Wallet now?'
+        );
+        if (go) navigate('/wallet');
+        return;
+      }
+
       // 2) Call your SuperUser upgrade endpoint
       await apiFetch('/api/users/superuser/upgrade', {
         method: 'POST',
