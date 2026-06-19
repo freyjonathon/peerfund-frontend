@@ -162,7 +162,7 @@ const AdminVerificationDetail = () => {
           {renderDocCard('ID front', idFront)}
           {renderDocCard('ID back', idBack)}
           {renderDocCard('Selfie', selfie)}
-        </div>
+    </div>  
       </section>
     </div>
   );
