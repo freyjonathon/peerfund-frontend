@@ -14,14 +14,13 @@ const Dashboard = () => {
   const [userName, setUserName] = useState('User');
   const [superUser, setSuperUser] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState(false);
 
-  // profile modal
   const [showProfile, setShowProfile] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileErr, setProfileErr] = useState('');
   const [profileUser, setProfileUser] = useState(null);
 
-  // --- Superuser popover state (must be before any early return) ---
   const [supOpen, setSupOpen] = useState(false);
   const supBtnRef = useRef(null);
   const supPopRef = useRef(null);
@@ -29,19 +28,22 @@ const Dashboard = () => {
   const toggleSup = () => setSupOpen((v) => !v);
   const closeSup = () => setSupOpen(false);
 
-  // close on outside click / ESC
   useEffect(() => {
     if (!supOpen) return;
+
     const onClick = (e) => {
       if (supPopRef.current?.contains(e.target)) return;
       if (supBtnRef.current?.contains(e.target)) return;
       closeSup();
     };
+
     const onEsc = (e) => {
       if (e.key === 'Escape') closeSup();
     };
+
     window.addEventListener('click', onClick);
     window.addEventListener('keydown', onEsc);
+
     return () => {
       window.removeEventListener('click', onClick);
       window.removeEventListener('keydown', onEsc);
@@ -54,7 +56,6 @@ const Dashboard = () => {
       setPosts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching posts:', err);
-      // Don’t hard-redirect; the page can still function without posts
     }
   };
 
@@ -63,6 +64,7 @@ const Dashboard = () => {
 
     const init = async () => {
       const token = localStorage.getItem('token');
+
       if (!token) {
         navigate('/login', { replace: true });
         return;
@@ -75,11 +77,9 @@ const Dashboard = () => {
         setUserName(profile?.name || 'User');
         setSuperUser(!!profile?.isSuperUser);
 
-        // Load posts after we know auth is valid
         await fetchPosts();
       } catch (err) {
         console.error('Failed to fetch user profile:', err);
-        // If profile fails, treat it as auth failure (common pattern)
         localStorage.removeItem('token');
         navigate('/login', { replace: true });
       } finally {
@@ -97,11 +97,13 @@ const Dashboard = () => {
 
   const handlePost = async () => {
     if (!newPost.trim()) return;
+
     try {
       await apiFetch('/api/posts', {
-      method: 'POST',
-      body: JSON.stringify({ content: newPost }),
-    });
+        method: 'POST',
+        body: JSON.stringify({ content: newPost }),
+      });
+
       setNewPost('');
       fetchPosts();
     } catch (err) {
@@ -111,37 +113,56 @@ const Dashboard = () => {
   };
 
   const handleUpgrade = async () => {
+    if (upgrading || superUser) return;
+
     try {
+      setUpgrading(true);
+
       const token = localStorage.getItem('token');
+
       if (!token) {
         navigate('/login', { replace: true });
         return;
       }
 
-      // 1) Check they have a funding card on file
-      const hasPayment = true;
+      let hasPayment = false;
+
+      try {
+        const pmData = await apiFetch('/api/billing/has-loan-payment-method');
+        hasPayment = !!pmData?.hasLoanPaymentMethod;
+      } catch (e) {
+        console.warn('Could not check saved bank account:', e);
+        hasPayment = false;
+      }
 
       if (!hasPayment) {
         const go = window.confirm(
-          'To upgrade to SuperUser, please save a funding card in your Wallet first.\n\nGo to Wallet now?'
+          'To upgrade to SuperUser, please save a bank account in your Wallet first.\n\nGo to Wallet now?'
         );
+
         if (go) navigate('/wallet');
         return;
       }
 
-      // 2) Call your SuperUser upgrade endpoint
-      await apiFetch('/api/users/superuser/upgrade', {
+      const result = await apiFetch('/api/users/superuser/upgrade', {
         method: 'POST',
       });
 
-
       setSuperUser(true);
-      alert(
-        '🎉 You’re now a SuperUser! Your monthly $1 fee will use your saved funding card.'
-      );
+      closeSup();
+
+      if (result?.alreadySuperUser) {
+        alert('You are already a SuperUser.');
+      } else {
+        alert(
+          '🎉 You’re now a SuperUser! Your monthly $1 fee will use your saved bank account.'
+        );
+      }
     } catch (err) {
       console.error('Upgrade error:', err);
       alert(`Failed to upgrade:\n${err.message || err}`);
+    } finally {
+      setUpgrading(false);
     }
   };
 
@@ -150,9 +171,9 @@ const Dashboard = () => {
     return days[new Date().getDay()];
   };
 
-  /* ---------- Profile modal helpers ---------- */
   const openProfile = async (userId) => {
     if (!userId) return;
+
     setShowProfile(true);
     setProfileLoading(true);
     setProfileErr('');
@@ -179,18 +200,27 @@ const Dashboard = () => {
     if (!amount || !rate) {
       const amtStr = window.prompt('Amount (50, 100, 150, 200, 250):');
       const amt = parseInt(amtStr, 10);
+
       if (![50, 100, 150, 200, 250].includes(amt)) return;
+
       const rateStr = window.prompt('APR (%) offered by this lender:');
       const r = Number(rateStr);
+
       if (!Number.isFinite(r)) return;
+
       amount = amt;
       rate = r;
     }
+
     const monthsStr = window.prompt(`How many months for $${amount} at ${rate}% APR? (1–24)`);
     const months = Math.max(1, Math.min(24, parseInt(monthsStr || '0', 10)));
+
     if (!months) return;
+
     const ok = window.confirm(`Send request for $${amount} at ${rate}% APR over ${months} months?`);
+
     if (!ok) return;
+
     navigate(`/direct-request/${lenderId}?amount=${amount}&rate=${rate}&months=${months}`);
   };
 
@@ -204,10 +234,10 @@ const Dashboard = () => {
 
   return (
     <div className="db-shell">
-      {/* Header / greeting + CTA */}
       <header className="db-hero card-glass">
         <div className="db-hero-text">
           <h2 className="db-title">Hey {userName}, Happy {getToday()}!</h2>
+
           {superUser && (
             <p className="db-subtitle">
               You’re a SuperUser – platform fees are waived on your repayments. 🎉
@@ -215,7 +245,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Only show upgrade CTA if not already a SuperUser */}
         {!superUser && (
           <div className="db-cta">
             <div>
@@ -227,9 +256,10 @@ const Dashboard = () => {
                 aria-haspopup="dialog"
                 aria-expanded={supOpen}
                 aria-controls="sup-popover"
-                title="Learn about Superuser"
+                title="Learn about SuperUser"
+                disabled={upgrading}
               >
-                Become a Superuser
+                Become a SuperUser
               </button>
 
               <div className="db-cta-text">
@@ -240,11 +270,14 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <button className="action-btn primary" onClick={handleUpgrade}>
-              Upgrade now
+            <button
+              className="action-btn primary"
+              onClick={handleUpgrade}
+              disabled={upgrading}
+            >
+              {upgrading ? 'Processing…' : 'Upgrade now'}
             </button>
 
-            {/* Popover */}
             {supOpen && (
               <>
                 <div
@@ -255,8 +288,9 @@ const Dashboard = () => {
                   ref={supPopRef}
                 >
                   <div className="sup-popover__head">
-                    <div className="sup-popover__title">Superuser benefits</div>
+                    <div className="sup-popover__title">SuperUser benefits</div>
                   </div>
+
                   <ul className="sup-popover__list">
                     <li>
                       <strong>Skip the 3% platform fee</strong> on repayments.
@@ -268,15 +302,22 @@ const Dashboard = () => {
                       <strong>Priority support</strong> &amp; early access to new features.
                     </li>
                   </ul>
+
                   <div className="sup-popover__actions">
-                    <button className="btn" onClick={closeSup}>
+                    <button className="btn" onClick={closeSup} disabled={upgrading}>
                       Maybe later
                     </button>
-                    <button className="btn-primary" onClick={handleUpgrade}>
-                      Upgrade for $1/mo
+
+                    <button
+                      className="btn-primary"
+                      onClick={handleUpgrade}
+                      disabled={upgrading}
+                    >
+                      {upgrading ? 'Processing…' : 'Upgrade for $1/mo'}
                     </button>
                   </div>
                 </div>
+
                 <div className="sup-popover__overlay" />
               </>
             )}
@@ -284,9 +325,7 @@ const Dashboard = () => {
         )}
       </header>
 
-      {/* Two-column content */}
       <div className="db-grid">
-        {/* Left: composer + feed */}
         <section className="card-panel">
           <div className="panel-head">
             <h3>Share with the community</h3>
@@ -299,10 +338,14 @@ const Dashboard = () => {
               value={newPost}
               onChange={(e) => setNewPost(e.target.value)}
             />
-            <button className="btn" onClick={handlePost}>Post</button>
+
+            <button className="btn" onClick={handlePost}>
+              Post
+            </button>
           </div>
 
           <h4 className="section-label">📢 PeerFeed</h4>
+
           <div className="feed">
             {posts.length === 0 ? (
               <div className="empty">No posts yet. Be the first to say hi!</div>
@@ -310,6 +353,7 @@ const Dashboard = () => {
               posts.map((post) => {
                 const authorId = post?.user?.id || post?.userId;
                 const authorName = post?.user?.name || 'Unknown';
+
                 return (
                   <article key={post.id || post._id} className="feed-item">
                     <div className="feed-top">
@@ -321,8 +365,12 @@ const Dashboard = () => {
                       >
                         {authorName}
                       </button>
-                      <time className="time">{new Date(post.createdAt).toLocaleString()}</time>
+
+                      <time className="time">
+                        {new Date(post.createdAt).toLocaleString()}
+                      </time>
                     </div>
+
                     <p className="content">{post.content}</p>
                   </article>
                 );
@@ -331,16 +379,17 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Right: leaderboard + actions */}
         <aside className="card-panel side">
-          <div className="panel-head"><h3>Top 10 Lenders</h3></div>
+          <div className="panel-head">
+            <h3>Top 10 Lenders</h3>
+          </div>
+
           <div className="side-card">
             <TopLenders />
           </div>
         </aside>
       </div>
 
-      {/* Profile modal */}
       {showProfile && (
         <div className="pfm-backdrop" onClick={closeProfile}>
           <div
@@ -349,9 +398,14 @@ const Dashboard = () => {
             role="dialog"
             aria-modal="true"
           >
-            <button className="pfm-close" onClick={closeProfile} aria-label="Close">✕</button>
+            <button className="pfm-close" onClick={closeProfile} aria-label="Close">
+              ✕
+            </button>
+
             {profileLoading ? (
-              <div className="pfm-body pfm-center"><div className="pfm-spinner" /></div>
+              <div className="pfm-body pfm-center">
+                <div className="pfm-spinner" />
+              </div>
             ) : profileErr ? (
               <div className="pfm-body pfm-error">{profileErr}</div>
             ) : (
