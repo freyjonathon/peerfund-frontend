@@ -1,11 +1,17 @@
 // src/pages/Home.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
 import peerfundGlobe from '../../assets/PeerFundGlobe.png';
 
 export default function Home() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const goTo = (path) => {
+    setMobileMenuOpen(false);
+    navigate(path);
+  };
 
   return (
     <div className="home">
@@ -17,7 +23,7 @@ export default function Home() {
           <div className="hero__brand">
             <button
               className="hero__brand-logo"
-              onClick={() => navigate('/')}
+              onClick={() => goTo('/')}
               aria-label="PeerFund home"
             >
               <img src={peerfundGlobe} alt="" className="hero__brand-globe" />
@@ -28,29 +34,42 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="hero__links hide-sm">
-            <button className="btn btn--ghost" onClick={() => navigate('/about')}>
-              About
-            </button>
-            <button className="btn btn--ghost" onClick={() => navigate('/how-it-works')}>
-              How it works
-            </button>
-            <button className="btn btn--ghost" onClick={() => navigate('/contact')}>
-              Contact
-            </button>
-            <button className="btn btn--ghost" onClick={() => navigate('/careers')}>
-              Careers
-            </button>
+          <div className="hero__links">
+            <button className="btn btn--ghost" onClick={() => goTo('/about')}>About</button>
+            <button className="btn btn--ghost" onClick={() => goTo('/how-it-works')}>How it works</button>
+            <button className="btn btn--ghost" onClick={() => goTo('/contact')}>Contact</button>
+            <button className="btn btn--ghost" onClick={() => goTo('/careers')}>Careers</button>
           </div>
 
           <div className="hero__auth">
-            <button className="btn btn--ghost" onClick={() => navigate('/login')}>
-              Log in
-            </button>
-            <button className="btn btn--primary" onClick={() => navigate('/signup')}>
-              Sign up
-            </button>
+            <button className="btn btn--ghost" onClick={() => goTo('/login')}>Log in</button>
+            <button className="btn btn--primary" onClick={() => goTo('/signup')}>Sign up</button>
           </div>
+
+          <button
+            className="hero__mobile-menu-btn"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-expanded={mobileMenuOpen}
+            aria-label="Open navigation menu"
+          >
+            ☰
+          </button>
+
+          {mobileMenuOpen && (
+            <div className="hero__mobile-menu">
+              <button onClick={() => goTo('/about')}>About</button>
+              <button onClick={() => goTo('/how-it-works')}>How it works</button>
+              <button onClick={() => goTo('/contact')}>Contact</button>
+              <button onClick={() => goTo('/careers')}>Careers</button>
+
+              <div className="hero__mobile-divider" />
+
+              <button onClick={() => goTo('/login')}>Log in</button>
+              <button className="hero__mobile-primary" onClick={() => goTo('/signup')}>
+                Sign up
+              </button>
+            </div>
+          )}
         </nav>
 
         <div className="container hero__copy">

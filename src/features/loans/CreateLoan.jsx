@@ -115,8 +115,8 @@ const CreateLoan = () => {
           <div>
             <div className="cl-alert-title">SuperUser perks unlocked</div>
             <div className="cl-alert-text">
-              The 3% PeerFund platform fee is waived on principal and payments.
-              A 3% banking fee still applies.
+              The 1% PeerFund platform fee is waived on principal and payments.
+              A 1% banking fee still applies.
             </div>
           </div>
         </div>
