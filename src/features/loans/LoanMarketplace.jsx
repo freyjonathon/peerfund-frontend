@@ -1,7 +1,6 @@
 // src/features/loans/LoanMarketplace.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import './LoanMarketplace.css';
-import InlineDiscussion from './InlineDiscussion';
 import UserProfileModal from '../../components/UserProfileModal';
 import OfferModal from '../../components/OfferModal';
 import { apiFetch } from '../../utils/api';
@@ -14,11 +13,11 @@ function safeNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Decode JWT to get the current user id (so we can hide their own requests)
 function getCurrentUserId() {
   let t = localStorage.getItem('token') || '';
   t = t.replace(/^"|"$/g, '');
   if (!t) return null;
+
   try {
     const payload = JSON.parse(atob(t.split('.')[1] || ''));
     return payload?.userId ?? payload?.id ?? null;
@@ -27,7 +26,6 @@ function getCurrentUserId() {
   }
 }
 
-// Normalize a loan id across Prisma/Mongo variants
 function loanIdOf(loan) {
   return loan?.id || loan?._id || loan?.loanId || null;
 }
@@ -36,22 +34,16 @@ export default function LoanMarketplace() {
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({ amount: '', purpose: '', duration: '' });
+  const [filters, setFilters] = useState({
+    amount: '',
+    purpose: '',
+    duration: '',
+  });
 
-  // expanded state per loan id
-  const [expanded, setExpanded] = useState({});
-  // which user profile to show in the modal
   const [profileUserId, setProfileUserId] = useState(null);
-  // which loan’s offer modal is open
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
   const currentUserId = getCurrentUserId();
-
-  const toggle = (id) =>
-    setExpanded((prev) => {
-      const collapsed = Object.keys(prev).reduce((acc, k) => ({ ...acc, [k]: false }), {});
-      return { ...collapsed, [id]: !prev[id] };
-    });
 
   useEffect(() => {
     let alive = true;
@@ -61,7 +53,6 @@ export default function LoanMarketplace() {
         setLoading(true);
         setError('');
 
-        // ✅ use apiFetch so base URL + auth behavior matches the rest of your app
         const data = await apiFetch('/api/loans/open');
 
         const items = Array.isArray(data)
@@ -74,12 +65,13 @@ export default function LoanMarketplace() {
 
         if (!alive) return;
 
-        // Filter out any entries missing an id (prevents React key + toggle issues)
         const cleaned = items.filter((x) => loanIdOf(x));
         setLoans(cleaned);
       } catch (err) {
         console.error('Error fetching open loans:', err);
+
         if (!alive) return;
+
         setError(err?.message || 'Failed to load open loan requests. Please try again.');
         setLoans([]);
       } finally {
@@ -88,6 +80,7 @@ export default function LoanMarketplace() {
     };
 
     fetchLoans();
+
     return () => {
       alive = false;
     };
@@ -96,7 +89,6 @@ export default function LoanMarketplace() {
   const handleFilterChange = (e) =>
     setFilters((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  // Exclude the viewer's own requests first, then apply filters
   const visible = useMemo(() => {
     const notMine = loans.filter((loan) => {
       const borrowerId = loan.borrower?.id || loan.borrower?._id || loan.borrowerId;
@@ -110,15 +102,15 @@ export default function LoanMarketplace() {
       const minAmt = filters.amount ? safeNumber(filters.amount) : null;
       const durFilter = filters.duration ? safeNumber(filters.duration) : null;
 
-      const matchesAmount =
-        !minAmt || (amt != null && amt >= minAmt);
+      const matchesAmount = !minAmt || (amt != null && amt >= minAmt);
 
       const matchesPurpose =
         !filters.purpose ||
-        String(loan.purpose || '').toLowerCase().includes(filters.purpose.toLowerCase());
+        String(loan.purpose || '')
+          .toLowerCase()
+          .includes(filters.purpose.toLowerCase());
 
-      const matchesDuration =
-        !durFilter || (dur != null && dur === durFilter);
+      const matchesDuration = !durFilter || (dur != null && dur === durFilter);
 
       return matchesAmount && matchesPurpose && matchesDuration;
     });
@@ -128,7 +120,6 @@ export default function LoanMarketplace() {
     <div className="lm-container">
       <h2 className="lm-heading">Open Loan Marketplace</h2>
 
-      {/* Filter bar */}
       <div className="lm-filters">
         <label className="lm-filter">
           <span>Min Amount</span>
@@ -140,6 +131,7 @@ export default function LoanMarketplace() {
             placeholder="e.g. 75"
           />
         </label>
+
         <label className="lm-filter">
           <span>Duration (months)</span>
           <input
@@ -172,23 +164,16 @@ export default function LoanMarketplace() {
             const name = borrower.name || borrower.fullName || 'Unknown';
 
             const duration = safeNumber(loan.duration);
-            const interest =
-              loan.interestRate != null ? `${loan.interestRate}%` : '—';
-
+            const interest = loan.interestRate != null ? `${loan.interestRate}%` : '—';
             const amount = safeNumber(loan.amount) ?? 0;
-            const isOpen = !!expanded[id];
 
-            // robust offer count
             const offerCount =
               (typeof loan.offerCount === 'number' && loan.offerCount) ??
               (loan._count?.loanOffers ??
                 (Array.isArray(loan.loanOffers) ? loan.loanOffers.length : 0));
-                
-            console.log('INLINE THREAD ID:', id, loan);
 
             return (
               <div className="lm-card" key={id}>
-                {/* Header row */}
                 <div className="lm-card-header">
                   <div className="lm-header-left">
                     <button
@@ -199,6 +184,7 @@ export default function LoanMarketplace() {
                     >
                       <div className="lm-title">{name}</div>
                     </button>
+
                     <div className="lm-subtitle">Borrower</div>
                   </div>
 
@@ -208,19 +194,25 @@ export default function LoanMarketplace() {
                   </div>
 
                   <div className="lm-header-right">
-                    <div style={{ fontSize: '.75rem', color: '#64748b' }}>Duration</div>
+                    <div style={{ fontSize: '.75rem', color: '#64748b' }}>
+                      Duration
+                    </div>
                     <div style={{ fontWeight: 600 }}>
                       {duration != null ? `${duration} months` : '—'}
                     </div>
                   </div>
 
                   <div className="lm-header-right">
-                    <div style={{ fontSize: '.75rem', color: '#64748b' }}>Interest</div>
+                    <div style={{ fontSize: '.75rem', color: '#64748b' }}>
+                      Interest
+                    </div>
                     <div style={{ fontWeight: 600 }}>{interest}</div>
                   </div>
 
                   <div className="lm-header-right">
-                    <div style={{ fontSize: '.75rem', color: '#64748b' }}>Offers</div>
+                    <div style={{ fontSize: '.75rem', color: '#64748b' }}>
+                      Offers
+                    </div>
                     <div style={{ fontWeight: 600 }}>{offerCount}</div>
                   </div>
 
@@ -229,40 +221,29 @@ export default function LoanMarketplace() {
                       type="button"
                       className="action-btn primary"
                       onClick={() => setSelectedLoanId(id)}
-                      aria-expanded={isOpen}
-                      aria-controls={`loan-details-${id}`}
                     >
                       💬 View Convo / 💵 Make Offer
                     </button>
                   </div>
                 </div>
-
-                {/* Collapsible details */}
-                {isOpen && (
-                  <div
-                    id={`loan-details-${id}`}
-                    className="lm-details"
-                    role="region"
-                    aria-label={`Loan details for ${name}`}
-                  >
-                    <div className="lm-details-grid" />
-                    <InlineDiscussion threadId={id} limit={5} compact showHeader={false} />
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Profile modal */}
       {profileUserId && (
-        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+        <UserProfileModal
+          userId={profileUserId}
+          onClose={() => setProfileUserId(null)}
+        />
       )}
 
-      {/* Offer modal */}
       {selectedLoanId && (
-        <OfferModal loanId={selectedLoanId} onClose={() => setSelectedLoanId(null)} />
+        <OfferModal
+          loanId={selectedLoanId}
+          onClose={() => setSelectedLoanId(null)}
+        />
       )}
     </div>
   );
