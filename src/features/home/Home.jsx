@@ -56,19 +56,43 @@ export default function Home() {
           </button>
 
           {mobileMenuOpen && (
-            <div className="hero__mobile-menu">
-              <button onClick={() => goTo('/about')}>About</button>
-              <button onClick={() => goTo('/how-it-works')}>How it works</button>
-              <button onClick={() => goTo('/contact')}>Contact</button>
-              <button onClick={() => goTo('/careers')}>Careers</button>
+            <>
+              <div
+                className="hero__mobile-backdrop"
+                onClick={() => setMobileMenuOpen(false)}
+              />
 
-              <div className="hero__mobile-divider" />
+              <div className="hero__mobile-menu">
+                <button onClick={() => goTo('/about')}>
+                  About
+                </button>
 
-              <button onClick={() => goTo('/login')}>Log in</button>
-              <button className="hero__mobile-primary" onClick={() => goTo('/signup')}>
-                Sign up
-              </button>
-            </div>
+                <button onClick={() => goTo('/how-it-works')}>
+                  How it works
+                </button>
+
+                <button onClick={() => goTo('/contact')}>
+                  Contact
+                </button>
+
+                <button onClick={() => goTo('/careers')}>
+                  Careers
+                </button>
+
+                <div className="hero__mobile-divider" />
+
+                <button onClick={() => goTo('/login')}>
+                  Log in
+                </button>
+
+                <button
+                  className="hero__mobile-primary"
+                  onClick={() => goTo('/signup')}
+                >
+                  Sign up
+                </button>
+              </div>
+            </>
           )}
         </nav>
 
