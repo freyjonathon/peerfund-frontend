@@ -228,10 +228,7 @@ export default function LoanMarketplace() {
                     <button
                       type="button"
                       className="action-btn primary"
-                      onClick={() => {
-                        setSelectedLoanId(id); // ✅ use normalized id
-                        toggle(id);
-                      }}
+                      onClick={() => setSelectedLoanId(id)}
                       aria-expanded={isOpen}
                       aria-controls={`loan-details-${id}`}
                     >

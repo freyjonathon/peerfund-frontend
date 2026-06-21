@@ -305,7 +305,7 @@ export default function OfferModal({ loanId, onClose }) {
 
               {/* Inline public discussion */}
               <div className="lm-details-grid" />
-              <InlineDiscussion threadId={loan.id} limit={5} compact showHeader={false} />
+              <InlineDiscussion threadId={loanId} limit={5} />
 
               {/* Submit offer (for lenders) */}
               {requestStatus === 'OPEN' && !isBorrower && (
