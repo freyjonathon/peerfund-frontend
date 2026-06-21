@@ -522,3 +522,61 @@
   position: relative;
   z-index: 1;
 }
+
+/* =========================
+   Mobile Menu Final Overlay Fix
+   ========================= */
+
+.hero__nav {
+  position: sticky;
+  top: 0;
+  z-index: 10000 !important;
+}
+
+.hero__mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(4px);
+  z-index: 9000 !important;
+}
+
+.hero__mobile-menu {
+  display: grid;
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  left: auto;
+
+  width: min(340px, calc(100vw - 32px));
+
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(18px);
+
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+
+  padding: 16px;
+
+  box-shadow:
+    0 28px 70px rgba(15, 23, 42, 0.28),
+    0 10px 24px rgba(15, 23, 42, 0.14);
+
+  z-index: 10001 !important;
+}
+
+.hero__mobile-menu button {
+  position: relative;
+  z-index: 10002;
+}
+
+@media (max-width: 820px) {
+  .hero__nav {
+    overflow: visible !important;
+  }
+
+  .hero__mobile-menu {
+    right: 0;
+    left: auto;
+  }
+}
