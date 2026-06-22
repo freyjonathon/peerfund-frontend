@@ -6,8 +6,6 @@ import OfferModal from '../../components/OfferModal';
 import RepaymentButton from '../loans/RepaymentButton';
 import { apiFetch } from '../../utils/api';
 
-/* ----------------------- helpers ----------------------- */
-
 function getCurrentUserId() {
   const t = localStorage.getItem('token');
   if (!t) return null;
@@ -52,8 +50,6 @@ function sortLoansWithPaidOffLast(list) {
     return aDone ? 1 : -1;
   });
 }
-
-/* ------------------------- Open request row ------------------------- */
 
 function OpenRequestRow({
   req,
@@ -125,18 +121,10 @@ function OpenRequestRow({
 
           {!isMarket && (
             <div className="mt-8" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                className="action-btn sm primary"
-                onClick={onAcceptDirect}
-                disabled={!!actionLoading[req.id]}
-              >
+              <button className="action-btn sm primary" onClick={onAcceptDirect} disabled={!!actionLoading[req.id]}>
                 {actionLoading[req.id] ? 'Working…' : 'Accept'}
               </button>
-              <button
-                className="action-btn sm"
-                onClick={onDeclineDirect}
-                disabled={!!actionLoading[req.id]}
-              >
+              <button className="action-btn sm" onClick={onDeclineDirect} disabled={!!actionLoading[req.id]}>
                 {actionLoading[req.id] ? 'Working…' : 'Decline'}
               </button>
             </div>
@@ -146,8 +134,6 @@ function OpenRequestRow({
     </div>
   );
 }
-
-/* -------------------------------- Parent -------------------------------- */
 
 export default function MoneySummary() {
   const [summary, setSummary] = useState({
@@ -404,12 +390,10 @@ export default function MoneySummary() {
         throw new Error(data?.error || 'Failed to accept offer');
       }
 
-      console.log('✅ Offer accepted response:', data);
-
       await fetchSummary();
 
       alert(
-        'Loan accepted and contract saved. The lender can now fund this loan from their saved payment method.'
+        'Loan accepted and contract saved. The lender can now fund this loan from their saved bank account.'
       );
     } catch (e) {
       console.error(e);
@@ -508,7 +492,7 @@ export default function MoneySummary() {
     if (!loanId) return;
 
     const confirmFund = window.confirm(
-      'Fund this loan from your saved payment method? The borrower will receive the funds in their PeerFund wallet.'
+      'Fund this loan from your saved bank account? The borrower will receive the funds in their PeerFund wallet after payment processing.'
     );
 
     if (!confirmFund) return;
@@ -521,14 +505,12 @@ export default function MoneySummary() {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      console.log('✅ Loan funded response:', data);
-
       if (data?.status === 'PROCESSING') {
         alert(
-          'Funding payment is processing. The borrower wallet will update once the payment succeeds.'
+          'Funding payment is processing. The borrower wallet will update once the ACH payment succeeds.'
         );
       } else {
-        alert('Loan successfully funded from your saved payment method.');
+        alert('Loan funding submitted from your saved bank account.');
       }
 
       await fetchSummary();
@@ -548,12 +530,7 @@ export default function MoneySummary() {
       <div className="mt-8">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <strong>Active Offers</strong>
-          <button
-            className="action-btn xs"
-            onClick={() => loadOffers(loanId)}
-            disabled={loading}
-            title="Refresh offers"
-          >
+          <button className="action-btn xs" onClick={() => loadOffers(loanId)} disabled={loading} title="Refresh offers">
             {loading ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
@@ -583,11 +560,7 @@ export default function MoneySummary() {
                 <div>{Number.isFinite(of.interestRate) ? `${of.interestRate}%` : '—'}</div>
 
                 <div style={{ justifySelf: 'end', display: 'flex', gap: 6 }}>
-                  <button
-                    className="action-btn xs primary"
-                    onClick={() => acceptOffer(of)}
-                    disabled={!!offerWorking[of.id]}
-                  >
+                  <button className="action-btn xs primary" onClick={() => acceptOffer(of)} disabled={!!offerWorking[of.id]}>
                     {offerWorking[of.id] ? 'Working…' : 'Accept'}
                   </button>
                 </div>
@@ -644,19 +617,11 @@ export default function MoneySummary() {
           </div>
 
           <div style={{ justifySelf: 'end', display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => setThreadLoanId(loanId)}
-              className="action-btn sm"
-              title="Open conversation"
-            >
+            <button onClick={() => setThreadLoanId(loanId)} className="action-btn sm" title="Open conversation">
               💬 Messages
             </button>
 
-            <button
-              onClick={() => setExpanded((m) => ({ ...m, [key]: !isExpanded }))}
-              className="action-btn sm"
-              title="View details"
-            >
+            <button onClick={() => setExpanded((m) => ({ ...m, [key]: !isExpanded }))} className="action-btn sm" title="View details">
               {isExpanded ? '🔽 Hide' : '📄 View'}
             </button>
           </div>
@@ -697,22 +662,22 @@ export default function MoneySummary() {
 
             {isBorrower && !isPaidOff && (
               <div className="mt-8">
-                <RepaymentButton loanId={loanId} onPaid={fetchSummary} />
+                <RepaymentButton
+                  loanId={loanId}
+                  amount={loan.installmentAmount}
+                  onPaid={fetchSummary}
+                />
               </div>
             )}
 
             {isLender && !isPaidOff && rawStatus === 'ACCEPTED' && (
               <div className="mt-8" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  className="action-btn sm primary"
-                  onClick={() => handleFundLoan(loanId)}
-                  disabled={!!funding[loanId]}
-                >
+                <button className="action-btn sm primary" onClick={() => handleFundLoan(loanId)} disabled={!!funding[loanId]}>
                   {funding[loanId] ? 'Funding…' : 'Fund Loan'}
                 </button>
 
                 <span className="ms-muted" style={{ alignSelf: 'center' }}>
-                  Charges your saved payment method and credits the borrower wallet.
+                  Charges your saved bank account and credits the borrower wallet after payment processing.
                 </span>
               </div>
             )}
@@ -735,11 +700,7 @@ export default function MoneySummary() {
       <h2 className="ms-heading">💵 My Money Summary</h2>
 
       <div className="ms-section">
-        <button
-          className="ms-section-head"
-          onClick={() => setOpenSec((s) => ({ ...s, open: !s.open }))}
-          aria-expanded={openSec.open}
-        >
+        <button className="ms-section-head" onClick={() => setOpenSec((s) => ({ ...s, open: !s.open }))} aria-expanded={openSec.open}>
           <div className="ms-subheading">My Open Loan Requests</div>
           <div className="ms-caret">{openSec.open ? '▾' : '▸'}</div>
         </button>
@@ -776,11 +737,7 @@ export default function MoneySummary() {
       </div>
 
       <div className="ms-section">
-        <button
-          className="ms-section-head"
-          onClick={() => setOpenSec((s) => ({ ...s, given: !s.given }))}
-          aria-expanded={openSec.given}
-        >
+        <button className="ms-section-head" onClick={() => setOpenSec((s) => ({ ...s, given: !s.given }))} aria-expanded={openSec.given}>
           <div className="ms-subheading">Loans Given (I&apos;m the Lender)</div>
           <div className="ms-caret">{openSec.given ? '▾' : '▸'}</div>
         </button>
@@ -797,11 +754,7 @@ export default function MoneySummary() {
       </div>
 
       <div className="ms-section">
-        <button
-          className="ms-section-head"
-          onClick={() => setOpenSec((s) => ({ ...s, received: !s.received }))}
-          aria-expanded={openSec.received}
-        >
+        <button className="ms-section-head" onClick={() => setOpenSec((s) => ({ ...s, received: !s.received }))} aria-expanded={openSec.received}>
           <div className="ms-subheading">Loans Received (I&apos;m the Borrower)</div>
           <div className="ms-caret">{openSec.received ? '▾' : '▸'}</div>
         </button>

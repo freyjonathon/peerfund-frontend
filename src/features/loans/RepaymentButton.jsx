@@ -1,10 +1,10 @@
 // src/features/loans/RepaymentButton.jsx
+
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { apiFetch } from '../../utils/api';
 
 export default function RepaymentButton({ loanId, amount, onPaid }) {
-  const [source, setSource] = useState('wallet'); // wallet | card
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [okMsg, setOkMsg] = useState('');
@@ -17,6 +17,12 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
   const handlePay = async () => {
     if (!loanId) return;
 
+    const confirmed = window.confirm(
+      'This payment will be withdrawn from your linked bank account via ACH. Continue?'
+    );
+
+    if (!confirmed) return;
+
     setLoading(true);
     setErrorMsg('');
     setOkMsg('');
@@ -24,11 +30,14 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
     try {
       await apiFetch(`/api/loans/${loanId}/pay-next`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentSource: source }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      setOkMsg('Payment submitted successfully.');
+      setOkMsg(
+        'Payment submitted successfully. ACH transfers may take 1–3 business days to settle.'
+      );
 
       if (typeof onPaid === 'function') {
         await onPaid();
@@ -44,52 +53,47 @@ export default function RepaymentButton({ loanId, amount, onPaid }) {
   return (
     <div style={{ marginTop: 12 }}>
       {displayAmount && (
-        <div style={{ marginBottom: 8, fontSize: 13, color: '#334155' }}>
+        <div
+          style={{
+            marginBottom: 8,
+            fontSize: 13,
+            color: '#334155',
+          }}
+        >
           <strong>Next installment:</strong> {displayAmount}
         </div>
       )}
 
       <div
         style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 12,
-          alignItems: 'center',
-          marginBottom: 8,
+          marginBottom: 12,
+          padding: '10px 12px',
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: 10,
           fontSize: 13,
-          color: '#475569',
+          color: '#334155',
         }}
       >
-        <span style={{ fontWeight: 600 }}>Pay from:</span>
-
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <input
-            type="radio"
-            name={`pay-source-${loanId}`}
-            value="wallet"
-            checked={source === 'wallet'}
-            onChange={() => setSource('wallet')}
-          />
-          PeerFund wallet balance
-        </label>
-
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <input
-            type="radio"
-            name={`pay-source-${loanId}`}
-            value="card"
-            checked={source === 'card'}
-            onChange={() => setSource('card')}
-          />
-          Saved funding card
-        </label>
-      </div>
-
-      {source === 'card' && (
-        <div style={{ marginBottom: 8, fontSize: 12, color: '#64748b' }}>
-          Card payments may include Stripe processing fees added on top.
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>
+          Payment Method
         </div>
-      )}
+
+        <div>
+          ✓ Linked Bank Account (ACH)
+        </div>
+
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: 12,
+            color: '#64748b',
+          }}
+        >
+          Repayments are automatically withdrawn from your saved bank account.
+          ACH transfers may take 1–3 business days to fully settle.
+        </div>
+      </div>
 
       <button
         type="button"
