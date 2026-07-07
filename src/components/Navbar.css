@@ -352,6 +352,10 @@
     height: 84px;
   }
 
+  .navbar__powered-by{
+  font-size:9px;
+  }
+
   .navbar__text-logo{
     font-size: 1.35rem;
   }
@@ -365,4 +369,28 @@
     padding: 0 9px;
     font-size: 12px;
   }
+}
+
+/* ---------- Brand ---------- */
+
+.navbar__brand{
+  display:flex;
+  flex-direction:column;
+  cursor:pointer;
+  user-select:none;
+  line-height:1;
+}
+
+.navbar__powered-by{
+  margin-top:2px;
+  margin-left:2px;
+  font-size:11px;
+  color:#64748b;
+  font-weight:500;
+  letter-spacing:.02em;
+}
+
+.navbar__powered-by strong{
+  color:#635bff;   /* Stripe purple */
+  font-weight:700;
 }

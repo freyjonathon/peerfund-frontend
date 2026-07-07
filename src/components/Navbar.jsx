@@ -41,10 +41,19 @@ const Navbar = () => {
           <img src={peerfundGlobe} alt="PeerFund menu" className="navbar__globe" />
         </button>
 
-        <div className="navbar__text-logo" onClick={() => navigate('/dashboard')}>
-          <span className="navbar__text-logo-blue">PEER</span>
-          <span className="navbar__text-logo-green">FUND</span>
-        </div>
+        <div
+            className="navbar__brand"
+            onClick={() => navigate('/dashboard')}
+          >
+            <div className="navbar__text-logo">
+              <span className="navbar__text-logo-blue">PEER</span>
+              <span className="navbar__text-logo-green">FUND</span>
+            </div>
+
+            <div className="navbar__powered-by">
+              powered by <strong>Stripe</strong>
+            </div>
+          </div>
       </div>
 
       <div className="nav-center" />
