@@ -570,3 +570,28 @@
     left: auto;
   }
 }
+
+.hero__brand-stack{
+  display:flex;
+  flex-direction:column;
+  line-height:1;
+}
+
+.hero__powered-by{
+  margin-top:4px;
+  font-size:11px;
+  color:#64748b;
+  font-weight:600;
+  letter-spacing:.02em;
+}
+
+.hero__powered-by strong{
+  color:#635bff;
+  font-weight:800;
+}
+
+@media (max-width:720px){
+  .hero__powered-by{
+    font-size:9px;
+  }
+}

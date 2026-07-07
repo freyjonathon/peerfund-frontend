@@ -27,9 +27,15 @@ export default function Home() {
               aria-label="PeerFund home"
             >
               <img src={peerfundGlobe} alt="" className="hero__brand-globe" />
-              <span className="hero__brand-word">
-                <span className="hero__brand-blue">PEER</span>
-                <span className="hero__brand-green">FUND</span>
+              <span className="hero__brand-stack">
+                <span className="hero__brand-word">
+                  <span className="hero__brand-blue">PEER</span>
+                  <span className="hero__brand-green">FUND</span>
+                </span>
+
+                <span className="hero__powered-by">
+                  powered by <strong>Stripe</strong>
+                </span>
               </span>
             </button>
           </div>
